@@ -250,7 +250,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (formData.image) productData.image = formData.image;
       if (formData.medias && formData.medias.length > 0) productData.medias = formData.medias;
       if (formData.excerpt) productData.excerpt = formData.excerpt.trim();
-      if (formData.notes) productData.notes = formData.notes.trim();
+      if (formData.notes && typeof formData.notes === 'string') productData.notes = formData.notes.trim();
       if (formData.type) productData.type = formData.type.trim();
       if (formData.category) productData.category = formData.category.trim();
       if (formData.unit) productData.unit = formData.unit.trim();
@@ -850,6 +850,35 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               </TouchableOpacity>
             );
           })}
+
+          {/* Save Button - Check Icon on Blue Circle */}
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={loading}
+            style={{
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              marginLeft: 8,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={{
+              width: 32,
+              height: 32,
+              backgroundColor: loading ? '#9CA3AF' : '#3B82F6',
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <MaterialIcons
+                name="check"
+                size={20}
+                color="#fff"
+              />
+            </View>
+          </TouchableOpacity>
         </ScrollView>
       </View>
 
@@ -859,49 +888,14 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
           <ScrollView
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: hasChanges ? 100 : 32 }}
+            contentContainerStyle={{ paddingBottom: 32 }}
           >
             {activeTabData.content}
           </ScrollView>
         )}
       </View>
 
-      {/* Bottom Overlay Save Button - Shopify Style */}
-      {hasChanges && onSave && (
-        <View style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: '#fff',
-          borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          paddingBottom: 34, // Account for safe area
-        }}>
-          <TouchableOpacity
-            onPress={onSave}
-            disabled={loading}
-            style={{
-              backgroundColor: loading ? '#9CA3AF' : '#000',
-              borderRadius: 8,
-              paddingVertical: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={{
-              color: '#fff',
-              fontSize: 16,
-              fontWeight: '600',
-            }}>
-              {loading ? 'Saving...' : 'Save'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+
 
       {/* Type Selection Modal */}
       <Modal

@@ -50,7 +50,7 @@ export default function OptionsScreen({ onNavigateToSet, onClose, onAddSet }: Op
     // Only process data if we have it and it's not loading
     if (isLoading || !data?.options) return [];
 
-    console.log('📊 Real-time options data:', data.options);
+
 
     // Group options by their 'set' field and count values
     const setMap = new Map<string, { id: string; name: string; count: number }>();
@@ -76,7 +76,6 @@ export default function OptionsScreen({ onNavigateToSet, onClose, onAddSet }: Op
       valueCount: set.count
     }));
 
-    console.log('📋 Processed option sets (real-time):', sets);
     return sets;
   }, [data?.options, isLoading]);
 

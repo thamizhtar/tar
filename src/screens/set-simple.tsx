@@ -129,7 +129,6 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
 
       // Extract unique groups and update group names
       const actualGroups = [...new Set(loadedValues.map((v: any) => v.group))];
-      console.log('📋 Actual groups from data:', actualGroups);
 
       const newGroupNames = { ...groupNames };
 
@@ -140,7 +139,6 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
 
         if (existingKey) {
           // Group already mapped correctly, keep it
-          console.log(`📋 Group "${groupName}" already mapped to key ${existingKey}`);
         } else {
           // Find the first available key for this new group
           const availableKey = ['1', '2', '3'].find(key =>
@@ -149,12 +147,10 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
 
           if (availableKey) {
             newGroupNames[availableKey] = groupName;
-            console.log(`📋 Mapped group "${groupName}" to key ${availableKey}`);
           }
         }
       });
 
-      console.log('📋 Final group names after update:', newGroupNames);
       setGroupNames(newGroupNames);
     }
   }, [data?.options, isNewSet, currentValues.length]);
@@ -162,16 +158,13 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
   // Handle system back button
   useEffect(() => {
     const backAction = () => {
-      console.log('🔙 Back button pressed, closing screen');
       onClose();
       return true; // Prevent default behavior
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-    console.log('📱 BackHandler registered');
 
     return () => {
-      console.log('📱 BackHandler removed');
       backHandler.remove();
     };
   }, [onClose]);
@@ -216,14 +209,11 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
             group: value.group,
             storeId: currentStore.id
           };
-          console.log('📝 Creating option:', optionData);
           return db.tx.options[optionId].update(optionData);
         });
 
         await db.transact(transactions);
-        console.log('✅ New option set created successfully');
       } else if (!isNewSet) {
-        console.log('📝 Updating existing option set with', currentValues.length, 'values');
         // Update existing set - preserve the order values from the state
         const transactions = currentValues.map((value) => {
           const optionData = {
@@ -234,12 +224,10 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
             group: value.group,
             storeId: currentStore.id // Add missing storeId for updates
           };
-          console.log('📝 Updating option:', value.id, optionData);
           return db.tx.options[value.id].update(optionData);
         });
 
         await db.transact(transactions);
-        console.log('✅ Option set updated successfully');
       }
 
       // Delete any values that were marked for deletion
@@ -262,60 +250,12 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
 
 
 
-  const updateRowValue = (groupKey: string, rowIndex: number, value: string) => {
-    setGroupInputRows(prev => ({
-      ...prev,
-      [groupKey]: prev[groupKey].map((row, index) =>
-        index === rowIndex ? value : row
-      )
-    }));
-  };
 
-  const submitRowValue = async (groupKey: string, rowIndex: number) => {
-    const trimmedValue = groupInputRows[groupKey][rowIndex]?.trim();
-
-    // Validation
-    if (!trimmedValue) {
-      Alert.alert('Validation Error', 'Value name cannot be empty');
-      return;
-    }
-
-    if (trimmedValue.length > 50) {
-      Alert.alert('Validation Error', 'Value name cannot exceed 50 characters');
-      return;
-    }
-
-    // Check for duplicates
-    const isDuplicate = currentValues.some(v =>
-      v.value.toLowerCase() === trimmedValue.toLowerCase()
-    );
-
-    if (isDuplicate) {
-      Alert.alert('Validation Error', 'A value with this name already exists');
-      return;
-    }
-
-    const newValue: OptionValue = {
-      id: isNewSet ? `temp_${Date.now()}` : id(),
-      value: trimmedValue,
-      identifier: `text:${trimmedValue.substring(0, 2).toUpperCase()}`,
-      order: currentValues.length,
-      group: groupNames[groupKey] || groupKey
-    };
-
-    // Add to current working values (will be saved when Save button is pressed)
-    setCurrentValues([...currentValues, newValue]);
-
-    // Clear the input for this row
-    updateRowValue(groupKey, rowIndex, '');
-  };
 
   const updateGroupName = (groupKey: string, newName: string) => {
     const trimmedName = newName.trim();
     if (trimmedName && trimmedName !== groupNames[groupKey]) {
       const oldGroupName = groupNames[groupKey];
-      console.log(`🔄 Updating group ${groupKey} locally: "${oldGroupName}" → "${trimmedName}"`);
-
       // Update values in local state only - will be saved when Save button is pressed
       setCurrentValues(prevValues => {
         const updatedValues = prevValues.map(value =>
@@ -323,18 +263,16 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
             ? { ...value, group: trimmedName }
             : value
         );
-        console.log(`📝 Updated ${updatedValues.filter(v => v.group === trimmedName).length} values to group "${trimmedName}" (local state only)`);
         return updatedValues;
       });
 
       // Update group names in local state only
       setGroupNames(prevNames => {
         const newNames = { ...prevNames, [groupKey]: trimmedName };
-        console.log('📝 New group names (local state only):', newNames);
         return newNames;
       });
 
-      console.log('✅ Group name update completed (will save to database on Save button press)');
+
     }
     // Clear tab editing state
     setEditingTab(null);
@@ -608,7 +546,7 @@ export default function SetScreen({ setId, setName, onClose, onSave }: SetScreen
                     order: index,
                   }));
                   setCurrentValues([...otherValues, ...updatedGroupValues]);
-                  console.log(`🔄 Reordered group "${currentGroupName}"`);
+
                 }}
                 keyExtractor={(item) => item.id}
                 renderItem={renderValueItem}

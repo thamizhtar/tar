@@ -51,7 +51,6 @@ export default function R2Image({
         // Check cache first
         const cached = urlCache.get(url);
         if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-          log.debug(`Using cached URL for: ${url}`, 'R2Image');
           setSignedUrl(cached.url);
           setLoading(false);
           return;
@@ -67,7 +66,6 @@ export default function R2Image({
           // Extract key from URL and generate signed URL
           const key = r2Service.extractKeyFromUrl(url);
           if (key) {
-            log.debug(`Generating signed URL for key: ${key}`, 'R2Image');
             const signed = await r2Service.getSignedUrl(key);
             if (!abortController.signal.aborted) {
               setSignedUrl(signed);

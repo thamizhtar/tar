@@ -107,7 +107,6 @@ export default function Page() {
   }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen]);
 
   const handleNavigate = useCallback((screen: Screen, data?: any) => {
-    log.info(`Navigating to screen: ${screen}`, 'Navigation', { data });
     setCurrentScreen(screen);
     // All screens except menu show bottom tabs by default (untoggled state)
     if (screen !== 'menu' && screen !== 'option-create' && screen !== 'option-edit') {
@@ -128,7 +127,6 @@ export default function Page() {
   }, []);
 
   const handleBottomTabPress = useCallback((tab: BottomTab) => {
-    log.info(`Bottom tab pressed: ${tab}`, 'Navigation');
     setActiveBottomTab(tab);
   }, []);
 
