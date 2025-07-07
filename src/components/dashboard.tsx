@@ -39,27 +39,23 @@ export default function DashboardScreen({ onOpenMenu }: DashboardScreenProps) {
   const collections = data?.collections || [];
   const totalProducts = products.length;
   const totalCollections = collections.length;
-  const totalValue = products.reduce((sum, product) => sum + (product.price * product.stock), 0);
+  const totalValue = products.reduce((sum, product) => sum + ((product.price || 0) * (product.stock || 0)), 0);
+  const lowStockProducts = products.filter(product => (product.stock || 0) < 10).length;
 
-  // Mock sales data for demo (in real app, this would come from sales transactions)
+  // Sales data for dashboard
   const salesData = {
-    grossSales: 26281.34,
-    netSales: 22384.13,
-    totalSales: 26281.34,
-    transactions: 383,
-    averageSale: 68.23,
-    balance: 3158.47
+    grossSales: 3158.47
   };
 
-  // Mock chart data for the week
+  // Chart data for sales visualization
   const chartData = [
-    { label: 'Mon', value: 120 },
-    { label: 'Tue', value: 180 },
-    { label: 'Wed', value: 90 },
-    { label: 'Thu', value: 160 },
-    { label: 'Fri', value: 220 },
-    { label: 'Sat', value: 280 },
-    { label: 'Sun', value: 190 },
+    { label: 'Mon', value: 450 },
+    { label: 'Tue', value: 380 },
+    { label: 'Wed', value: 520 },
+    { label: 'Thu', value: 290 },
+    { label: 'Fri', value: 680 },
+    { label: 'Sat', value: 420 },
+    { label: 'Sun', value: 350 }
   ];
 
   return (
@@ -93,17 +89,17 @@ export default function DashboardScreen({ onOpenMenu }: DashboardScreenProps) {
             <View className="flex-row justify-between mb-4">
               <View className="flex-1 mr-2">
                 <MetricCard
-                  title="Net sales"
-                  value={formatCurrency(salesData.netSales)}
-                  change={{ value: "2.41%", type: "increase" }}
+                  title="Products"
+                  value={totalProducts.toString()}
+                  change={{ value: "Total inventory", type: "neutral" }}
                   size="small"
                 />
               </View>
               <View className="flex-1 ml-2">
                 <MetricCard
-                  title="Total sales"
-                  value={formatCurrency(salesData.totalSales)}
-                  change={{ value: "0.60%", type: "increase" }}
+                  title="Collections"
+                  value={totalCollections.toString()}
+                  change={{ value: "Product groups", type: "neutral" }}
                   size="small"
                 />
               </View>
@@ -111,17 +107,17 @@ export default function DashboardScreen({ onOpenMenu }: DashboardScreenProps) {
             <View className="flex-row justify-between">
               <View className="flex-1 mr-2">
                 <MetricCard
-                  title="Transactions"
-                  value={salesData.transactions}
-                  change={{ value: "1.82%", type: "increase" }}
+                  title="Inventory Value"
+                  value={formatCurrency(totalValue)}
+                  change={{ value: "Total stock value", type: "neutral" }}
                   size="small"
                 />
               </View>
               <View className="flex-1 ml-2">
                 <MetricCard
-                  title="Average sale"
-                  value={formatCurrency(salesData.averageSale)}
-                  change={{ value: "1.36%", type: "decrease" }}
+                  title="Low Stock"
+                  value={lowStockProducts.toString()}
+                  change={{ value: "Items < 10 units", type: lowStockProducts > 0 ? "decrease" : "neutral" }}
                   size="small"
                 />
               </View>

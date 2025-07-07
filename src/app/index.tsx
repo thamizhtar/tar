@@ -109,14 +109,18 @@ export default function Page() {
 
   const handleNavigate = useCallback((screen: Screen, data?: any) => {
     setCurrentScreen(screen);
-    // All screens except menu show bottom tabs by default (untoggled state)
-    if (screen !== 'menu' && screen !== 'option-create' && screen !== 'option-edit') {
-      setShowBottomTabs(true); // Dashboard, sales, reports, products, collections start untoggled (tabs shown)
-    }
-    // Reset to workspace tab when changing main screens
-    if (screen !== 'menu' && screen !== 'option-create' && screen !== 'option-edit') {
+
+    // For menu screen, ensure we reset all navigation states
+    if (screen === 'menu') {
+      setShowBottomTabs(true);
       setActiveBottomTab('workspace');
     }
+    // All screens except menu show bottom tabs by default (untoggled state)
+    else if (screen !== 'option-create' && screen !== 'option-edit') {
+      setShowBottomTabs(true); // Dashboard, sales, reports, products, collections start untoggled (tabs shown)
+      setActiveBottomTab('workspace'); // Reset to workspace tab when changing main screens
+    }
+
     // Reset management view when navigating to products/collections
     if (screen === 'products' || screen === 'collections') {
       setShowManagement(false);
@@ -129,6 +133,13 @@ export default function Page() {
 
   const handleBottomTabPress = useCallback((tab: BottomTab) => {
     setActiveBottomTab(tab);
+    // If clicking on workspace tab, show main content (showBottomTabs = true)
+    // If clicking on other tabs (ai, tasks, people), show tab content (showBottomTabs = false)
+    if (tab === 'workspace') {
+      setShowBottomTabs(true);
+    } else {
+      setShowBottomTabs(false);
+    }
   }, []);
 
   const renderMainContent = () => {

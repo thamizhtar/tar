@@ -23,16 +23,8 @@ export default function WorkspaceContent({ currentScreen }: WorkspaceContentProp
   const renderDashboardWorkspace = () => {
     const totalProducts = products.length;
     const totalCollections = collections.length;
-    const totalValue = products.reduce((sum, product) => sum + (product.price * product.stock), 0);
-    const lowStockProducts = products.filter(product => product.stock < 10).length;
-
-    // Mock sales data for demo
-    const salesData = {
-      grossSales: 26281.34,
-      netSales: 22384.13,
-      transactions: 383,
-      averageSale: 68.23,
-    };
+    const totalValue = products.reduce((sum, product) => sum + (product.price * (product.stock || 0)), 0);
+    const lowStockProducts = products.filter(product => (product.stock || 0) < 10).length;
 
     return (
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -43,20 +35,20 @@ export default function WorkspaceContent({ currentScreen }: WorkspaceContentProp
           <View className="flex-row flex-wrap gap-3 mb-6">
             <View className="flex-1 min-w-[45%]">
               <MetricCard
-                title="Gross Sales"
-                value={formatCurrency(salesData.grossSales)}
-                subtitle="Today"
-                trend="+12.5%"
+                title="Inventory Value"
+                value={formatCurrency(totalValue)}
+                subtitle="Total stock value"
+                trend="Real-time"
                 trendUp={true}
               />
             </View>
             <View className="flex-1 min-w-[45%]">
               <MetricCard
-                title="Transactions"
-                value={salesData.transactions.toString()}
-                subtitle="Today"
-                trend="+8.2%"
-                trendUp={true}
+                title="Low Stock"
+                value={lowStockProducts.toString()}
+                subtitle="Items < 10 units"
+                trend="Needs attention"
+                trendUp={false}
               />
             </View>
             <View className="flex-1 min-w-[45%]">

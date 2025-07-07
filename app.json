@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "TAR POS",
+    "name": "tar",
     "slug": "tar-pos",
     "version": "1.0.0",
     "scheme": "tar-pos",
@@ -18,7 +18,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "transparent"
       },
       "permissions": [
         "CAMERA",

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
 
 export type BottomTab = 'workspace' | 'ai' | 'tasks' | 'people';
 export type MainScreen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections';
@@ -17,7 +18,7 @@ interface BottomNavigationProps {
 interface TabItem {
   id: BottomTab;
   label: string;
-  iconLibrary: 'MaterialIcons' | 'AntDesign' | 'Ionicons';
+  iconLibrary: 'MaterialIcons' | 'AntDesign' | 'Ionicons' | 'Feather';
   iconName: string;
   activeColor: string;
   inactiveColor: string;
@@ -27,8 +28,8 @@ const tabs: TabItem[] = [
   {
     id: 'workspace',
     label: '',
-    iconLibrary: 'MaterialIcons',
-    iconName: 'workspaces-outline',
+    iconLibrary: 'Feather',
+    iconName: 'circle',
     activeColor: 'text-blue-600',
     inactiveColor: 'text-gray-500',
   },
@@ -99,6 +100,14 @@ export default function BottomNavigation({ activeTab, onTabPress, currentScreen 
       case 'Ionicons':
         return (
           <Ionicons
+            name={tab.iconName as any}
+            size={iconSize}
+            color={iconColor}
+          />
+        );
+      case 'Feather':
+        return (
+          <Feather
             name={tab.iconName as any}
             size={iconSize}
             color={iconColor}
