@@ -13,7 +13,7 @@ import { MediaManager, MediaItem } from './media';
 import { useStore } from '../lib/store-context';
 
 // Simple replacement components for removed vtabs
-const TabContent = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const TabContent = ({ title, children }: { title: string; children?: React.ReactNode }) => (
   <View style={{ flex: 1, padding: 16 }}>
     {children}
   </View>
@@ -64,6 +64,24 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   );
 
   const productCollection = productWithCollection?.products?.[0]?.collection;
+
+  // Query option sets for the current store
+  const { data: optionSetsData } = db.useQuery(
+    currentStore?.id ? {
+      options: {
+        $: { where: { storeId: currentStore.id } }
+      }
+    } : {}
+  );
+
+  // Query items for the current product
+  const { data: productItemsData } = db.useQuery(
+    product?.id ? {
+      items: {
+        $: { where: { productId: product.id } }
+      }
+    } : {}
+  );
 
   const [formData, setFormData] = useState({
     // Use title as primary field (schema uses title, not name)
@@ -119,8 +137,15 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [imageUploading, setImageUploading] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const rotateAnim = useRef(new Animated.Value(0)).current;
+  const [selectedOptionSet, setSelectedOptionSet] = useState<string | null>(null);
+  const [selectedOptionValues, setSelectedOptionValues] = useState<string[]>([]);
 
-  // Initialize 10tap editor
+  const [showFullScreenImageDrawer, setShowFullScreenImageDrawer] = useState(false);
+  const [showFullScreenNotesEditor, setShowFullScreenNotesEditor] = useState(false);
+  const [showOptionSetSelector, setShowOptionSetSelector] = useState(false);
+  const [selectedOptionSets, setSelectedOptionSets] = useState<string[]>([]);
+
+  // Initialize 10tap editor - Shopify Style
   const editor = useEditorBridge({
     autofocus: false,
     avoidIosKeyboard: true,
@@ -128,21 +153,13 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     theme: {
       toolbar: {
         toolbarBody: {
-          backgroundColor: Platform.OS === 'ios' ? '#D1D5DB' : '#404040',
-          borderTopWidth: Platform.OS === 'ios' ? 1 : 0,
-          borderTopColor: Platform.OS === 'ios' ? '#9CA3AF' : 'transparent',
+          backgroundColor: '#F8F9FA',
+          borderTopWidth: 0.5,
+          borderTopColor: '#E1E1E1',
           borderBottomWidth: 0,
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          minHeight: Platform.OS === 'ios' ? 44 : 48,
-        },
-        toolbarItem: {
-          color: Platform.OS === 'ios' ? '#000000' : '#FFFFFF',
-          backgroundColor: 'transparent',
-        },
-        toolbarItemActive: {
-          color: Platform.OS === 'ios' ? '#007AFF' : '#4A9EFF',
-          backgroundColor: 'transparent',
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          minHeight: 50,
         },
       },
     },
@@ -182,6 +199,20 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     setSelectedCollectionName(productCollection?.name || null);
   }, [productCollection?.id, productCollection?.name]);
 
+  // Initialize selected options from product data
+  useEffect(() => {
+    if (product?.options) {
+      // Assuming options is stored as { optionSet: string, selectedValues: string[] }
+      setSelectedOptionSet(product.options.optionSet || null);
+      setSelectedOptionValues(product.options.selectedValues || []);
+    }
+  }, [product?.options]);
+
+  // Update options in form data when selection changes
+  useEffect(() => {
+    updateOptions();
+  }, [selectedOptionSet, selectedOptionValues]);
+
   // Track collection changes for hasChanges detection
   useEffect(() => {
     if (isEditing && productCollection) {
@@ -200,7 +231,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     const keyboardDidShowListener = Keyboard.addListener(
       'keyboardDidShow',
       (e) => {
-        if (activeTab === 'notes') {
+        if (showFullScreenNotesEditor) {
           setKeyboardHeight(e.endCoordinates.height);
         }
       }
@@ -217,7 +248,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       keyboardDidShowListener?.remove();
       keyboardDidHideListener?.remove();
     };
-  }, [activeTab]);
+  }, [showFullScreenNotesEditor]);
 
   // Handle Android back button
   useEffect(() => {
@@ -249,16 +280,167 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     setHasChanges(true); // Mark that changes have been made
   };
 
+  const updateOptions = () => {
+    const optionsData = selectedOptionSet ? {
+      optionSet: selectedOptionSet,
+      selectedValues: selectedOptionValues
+    } : null;
+    updateField('options', optionsData);
+  };
+
   const handleMediaChange = useCallback((media: MediaItem[]) => {
     setImageError(false); // Reset image error when media changes
     setFormData(prev => ({
       ...prev,
       medias: media,
-      // Update primary image URL for backward compatibility
-      image: media.length > 0 ? media[0].url : '',
     }));
     setHasChanges(true); // Mark that changes have been made
   }, []);
+
+  const generateItemsFromOptionSets = async (optionSetNames: string[]) => {
+    if (!product?.id || !currentStore?.id) {
+      Alert.alert('Error', 'Product must be saved before generating items');
+      return;
+    }
+
+    if (optionSetNames.length === 0) {
+      Alert.alert('Error', 'Please select at least one option set');
+      return;
+    }
+
+    try {
+      // First, delete all existing items for this product
+      const existingItems = productItemsData?.items || [];
+      if (existingItems.length > 0) {
+        const deletePromises = existingItems.map((item: any) =>
+          db.transact(db.tx.items[item.id].delete())
+        );
+        await Promise.all(deletePromises);
+      }
+
+      // Get options for each selected set
+      const optionArrays: any[][] = [];
+
+      for (const setName of optionSetNames.slice(0, 3)) { // Limit to 3 option sets (option1, option2, option3)
+        const setOptions = optionSetsData?.options?.filter(
+          (option: any) => option.set === setName
+        ) || [];
+
+        if (setOptions.length > 0) {
+          optionArrays.push(setOptions.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
+        }
+      }
+
+      if (optionArrays.length === 0) {
+        Alert.alert('Error', 'No option values found for selected sets');
+        return;
+      }
+
+      // Generate all possible combinations
+      const generateCombinations = (arrays: any[][]): any[][] => {
+        if (arrays.length === 0) return [[]];
+        if (arrays.length === 1) return arrays[0].map(item => [item]);
+
+        const result: any[][] = [];
+        const firstArray = arrays[0];
+        const restCombinations = generateCombinations(arrays.slice(1));
+
+        firstArray.forEach(firstItem => {
+          restCombinations.forEach(restCombination => {
+            result.push([firstItem, ...restCombination]);
+          });
+        });
+
+        return result;
+      };
+
+      const combinations = generateCombinations(optionArrays);
+
+      // Generate items for each combination
+      const itemPromises = combinations.map(async (combination: any[], index: number) => {
+        const itemId = id();
+
+        // Create SKU from combination values
+        const skuParts = combination.map(option =>
+          option.value?.toUpperCase().replace(/\s+/g, '-') || `OPT${index}`
+        );
+        const itemSku = `${formData.sku || 'ITEM'}-${skuParts.join('-')}`;
+
+        // Create item data with up to 3 options
+        const itemData: any = {
+          productId: product.id,
+          storeId: currentStore.id,
+          sku: itemSku,
+          price: formData.price || 0,
+          saleprice: formData.saleprice || 0,
+          cost: formData.cost || 0,
+          available: 0,
+          onhand: 0,
+          committed: 0,
+          unavailable: 0,
+          reorderlevel: 0,
+        };
+
+        // Assign option values to option1, option2, option3
+        if (combination[0]) itemData.option1 = combination[0].value;
+        if (combination[1]) itemData.option2 = combination[1].value;
+        if (combination[2]) itemData.option3 = combination[2].value;
+
+        return db.transact(db.tx.items[itemId].update(itemData));
+      });
+
+      await Promise.all(itemPromises);
+
+      const setNames = optionSetNames.join(', ');
+      Alert.alert('Success', `Generated ${combinations.length} item variants from option sets: ${setNames}`);
+      setShowOptionSetSelector(false);
+      setSelectedOptionSets([]);
+
+    } catch (error) {
+      console.error('Failed to generate items:', error);
+      Alert.alert('Error', 'Failed to generate items. Please try again.');
+    }
+  };
+
+  const handlePrimaryImageUpload = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'Images' as any,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setImageUploading(true);
+        const asset = result.assets[0];
+
+        try {
+          const mediaFile = {
+            uri: asset.uri,
+            name: asset.fileName || `primary_image_${Date.now()}.jpg`,
+            type: 'image/jpeg',
+            size: asset.fileSize,
+          };
+
+          const uploadResult = await r2Service.uploadFile(mediaFile, 'products');
+          if (uploadResult.success && uploadResult.url) {
+            updateField('image', uploadResult.url);
+          } else {
+            Alert.alert('Error', uploadResult.error || 'Failed to upload image. Please try again.');
+          }
+        } catch (error) {
+          console.error('Failed to upload primary image:', error);
+          Alert.alert('Error', 'Failed to upload image. Please try again.');
+        } finally {
+          setImageUploading(false);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to pick primary image:', error);
+      Alert.alert('Error', 'Failed to select image. Please try again.');
+    }
+  };
 
   const handleSave = async () => {
     if (!formData.title.trim()) {
@@ -390,7 +572,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                onPress={() => setShowImageUpload(true)}
+                onPress={() => setShowFullScreenImageDrawer(true)}
               >
                 {imageUploading ? (
                   <View style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -522,6 +704,45 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               <Text style={{ fontSize: 24, fontWeight: '600', color: '#111827' }}>
                 {parseFloat(formData.saleprice || '0').toFixed(2)} $
               </Text>
+            </View>
+
+            {/* Notes and Options Row */}
+            <View style={{
+              flexDirection: 'row',
+              backgroundColor: '#fff',
+              borderBottomWidth: 1,
+              borderColor: '#E5E7EB',
+            }}>
+              {/* Notes Tile - Square */}
+              <TouchableOpacity
+                style={{
+                  width: 60,
+                  height: 60,
+                  backgroundColor: '#fff',
+                  borderRightWidth: 1,
+                  borderColor: '#E5E7EB',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onPress={() => setShowFullScreenNotesEditor(true)}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>n</Text>
+              </TouchableOpacity>
+
+              {/* Options Tile - Rectangle taking remaining space */}
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  height: 60,
+                  backgroundColor: '#fff',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingHorizontal: 12,
+                }}
+                onPress={() => setShowOptionSetSelector(true)}
+              >
+                <Text style={{ fontSize: 20, fontWeight: '600', color: '#111827' }}>O</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Bottom Row: POS, Website, Status */}
@@ -716,55 +937,100 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       ),
     },
     {
-      id: 'media',
-      label: 'Media',
-      icon: <Ionicons name="image-outline" size={20} color="#6B7280" />,
-      content: (
-        <TabContent title="">
-          <MediaManager
-            initialMedia={formData.medias}
-            onMediaChange={handleMediaChange}
-            maxItems={10}
-            allowMultiple={true}
-            prefix="products"
-            title=""
-            description=""
-            useCustomUpload={true}
-            onCustomUpload={() => setShowImageUpload(true)}
-            customUploading={imageUploading}
-          />
-        </TabContent>
-      ),
-    },
-    {
-      id: 'notes',
-      label: 'Notes',
-      icon: <Text style={{ fontSize: 14, fontWeight: '600', color: '#6B7280' }}>n</Text>,
-      content: (
-        <TabContent title="">
-          <View style={{ flex: 1, height: 400 }}>
-            {/* 10tap Rich Text Editor */}
-            <RichText
-              editor={editor}
-              style={{
-                flex: 1,
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                borderRadius: 8,
-                backgroundColor: '#fff',
-              }}
-            />
-          </View>
-        </TabContent>
-      ),
-    },
-    {
       id: 'items',
       label: 'Items',
       icon: <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280' }}>I</Text>,
       content: (
         <TabContent title="">
-          {/* Empty content */}
+          <View style={{ margin: -16, padding: 0 }}>
+            {(() => {
+              const items = productItemsData?.items || [];
+
+              if (items.length === 0) {
+                return (
+                  <View style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingVertical: 60,
+                    paddingHorizontal: 20
+                  }}>
+                    <MaterialIcons name="inventory-2" size={48} color="#9CA3AF" />
+                    <Text style={{
+                      fontSize: 18,
+                      fontWeight: '600',
+                      color: '#6B7280',
+                      marginTop: 16,
+                      textAlign: 'center'
+                    }}>
+                      No Items Yet
+                    </Text>
+                    <Text style={{
+                      fontSize: 14,
+                      color: '#9CA3AF',
+                      marginTop: 8,
+                      textAlign: 'center',
+                      lineHeight: 20
+                    }}>
+                      Tap the "O" button to select an option set{'\n'}and generate product variants
+                    </Text>
+                  </View>
+                );
+              }
+
+              return (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {items.map((item: any) => (
+                    <View
+                      key={item.id}
+                      style={{
+                        backgroundColor: '#fff',
+                        borderBottomWidth: 1,
+                        borderBottomColor: '#E5E7EB',
+                        paddingVertical: 16,
+                        paddingHorizontal: 16,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
+                            {item.sku || 'No SKU'}
+                          </Text>
+                          {item.option1 && (
+                            <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
+                              {item.option1}
+                              {item.option2 && ` • ${item.option2}`}
+                              {item.option3 && ` • ${item.option3}`}
+                            </Text>
+                          )}
+                          <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                            <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+                              Stock: {item.onhand || 0}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 16 }}>
+                              Price: ${(item.price || 0).toFixed(2)}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <View style={{
+                            backgroundColor: item.available > 0 ? '#10B981' : '#EF4444',
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 12,
+                          }}>
+                            <Text style={{ fontSize: 12, fontWeight: '500', color: '#fff' }}>
+                              {item.available > 0 ? 'Available' : 'Out of Stock'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              );
+            })()}
+          </View>
         </TabContent>
       ),
     },
@@ -805,6 +1071,20 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       }}>
         {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
+          const iconColor = isActive ? '#3B82F6' : '#6B7280';
+
+          // Create icon with proper color
+          let tabIcon: React.ReactElement;
+          if (tab.id === 'core') {
+            tabIcon = <Ionicons name="cube-outline" size={20} color={iconColor} />;
+          } else if (tab.id === 'metafields') {
+            tabIcon = <MaterialIcons name="numbers" size={20} color={iconColor} />;
+          } else if (tab.id === 'categorization') {
+            tabIcon = <Ionicons name="folder-outline" size={20} color={iconColor} />;
+          } else if (tab.id === 'items') {
+            tabIcon = <Text style={{ fontSize: 16, fontWeight: '600', color: iconColor }}>I</Text>;
+          }
+
           return (
             <TouchableOpacity
               key={tab.id}
@@ -824,12 +1104,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 alignItems: 'center',
                 opacity: isActive ? 1 : 0.6
               }}>
-                {React.cloneElement(tab.icon as React.ReactElement, {
-                  style: {
-                    ...((tab.icon as React.ReactElement).props.style || {}),
-                    color: isActive ? '#3B82F6' : '#6B7280'
-                  }
-                })}
+                {tabIcon}
               </View>
             </TouchableOpacity>
           );
@@ -865,7 +1140,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       </View>
 
       {/* Notes Toolbar - Attached to Keyboard */}
-      {activeTab === 'notes' && keyboardHeight > 0 && (
+      {showFullScreenNotesEditor && keyboardHeight > 0 && (
         <View style={{
           position: 'absolute',
           bottom: keyboardHeight,
@@ -1323,6 +1598,475 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               )}
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* Full-Screen Image Drawer */}
+      <Modal
+        visible={showFullScreenImageDrawer}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowFullScreenImageDrawer(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+          {/* Header */}
+          <View style={{
+            paddingTop: 50, // Account for status bar
+            paddingBottom: 16,
+            paddingHorizontal: 20,
+            backgroundColor: '#fff',
+            borderBottomWidth: 1,
+            borderBottomColor: '#E5E7EB',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <TouchableOpacity
+              onPress={() => setShowFullScreenImageDrawer(false)}
+              style={{
+                padding: 8,
+                borderRadius: 8,
+              }}
+            >
+              <MaterialIcons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+
+            <Text style={{
+              fontSize: 18,
+              fontWeight: '600',
+              color: '#111827',
+            }}>
+              Product Images
+            </Text>
+
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Content */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 20 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Primary Image Section */}
+            <View style={{
+              backgroundColor: '#fff',
+              borderRadius: 12,
+              padding: 20,
+              marginBottom: 20,
+              borderWidth: 1,
+              borderColor: '#E5E7EB',
+            }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: '#111827',
+                marginBottom: 16,
+              }}>
+                Primary Image
+              </Text>
+
+              <TouchableOpacity
+                style={{
+                  width: '100%',
+                  height: 200,
+                  backgroundColor: '#F9FAFB',
+                  borderRadius: 8,
+                  borderWidth: 2,
+                  borderColor: '#E5E7EB',
+                  borderStyle: 'dashed',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onPress={handlePrimaryImageUpload}
+              >
+                {imageUploading ? (
+                  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                    <Animated.View
+                      style={{
+                        transform: [{
+                          rotate: rotateAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ['0deg', '360deg'],
+                          }),
+                        }],
+                      }}
+                    >
+                      <View style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        borderWidth: 3,
+                        borderColor: '#E5E7EB',
+                        borderTopColor: '#9CA3AF',
+                      }} />
+                    </Animated.View>
+                    <Text style={{ color: '#6B7280', fontSize: 14, marginTop: 8, textAlign: 'center' }}>
+                      Uploading...
+                    </Text>
+                  </View>
+                ) : formData.image && !imageError ? (
+                  <R2Image
+                    url={formData.image}
+                    style={{ width: '100%', height: '100%', borderRadius: 6 }}
+                    resizeMode="cover"
+                    onError={(error) => {
+                      setImageError(true);
+                    }}
+                    onLoad={() => {
+                      // Image loaded successfully
+                    }}
+                  />
+                ) : (
+                  <View style={{ alignItems: 'center' }}>
+                    <MaterialIcons name="add-photo-alternate" size={48} color="#9CA3AF" />
+                    <Text style={{ color: '#9CA3AF', fontSize: 16, marginTop: 8, textAlign: 'center' }}>
+                      Tap to add primary image
+                    </Text>
+                    <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4, textAlign: 'center' }}>
+                      This will be the main product image
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Media System Section */}
+            <View style={{
+              backgroundColor: '#fff',
+              borderRadius: 12,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: '#E5E7EB',
+            }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: '#111827',
+                marginBottom: 16,
+              }}>
+                Medias
+              </Text>
+
+              <MediaManager
+                initialMedia={formData.medias}
+                onMediaChange={handleMediaChange}
+                maxItems={10}
+                allowMultiple={true}
+                prefix="products"
+                title=""
+                description=""
+                useCustomUpload={true}
+                onCustomUpload={() => setShowImageUpload(true)}
+                customUploading={imageUploading}
+              />
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Full-Screen Notes Editor - Shopify Style */}
+      <Modal
+        visible={showFullScreenNotesEditor}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowFullScreenNotesEditor(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+          {/* Header - Shopify Style */}
+          <View style={{
+            paddingTop: 50, // Account for status bar
+            paddingBottom: 12,
+            paddingHorizontal: 16,
+            backgroundColor: '#fff',
+            borderBottomWidth: 0.5,
+            borderBottomColor: '#E1E1E1',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <TouchableOpacity
+              onPress={() => setShowFullScreenNotesEditor(false)}
+              style={{
+                padding: 8,
+                marginLeft: -8,
+              }}
+            >
+              <MaterialIcons name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
+
+            <Text style={{
+              fontSize: 17,
+              fontWeight: '600',
+              color: '#000',
+              flex: 1,
+              textAlign: 'center',
+              marginHorizontal: 16,
+            }}>
+              Description
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setShowFullScreenNotesEditor(false)}
+              style={{
+                padding: 8,
+                marginRight: -8,
+              }}
+            >
+              <Text style={{
+                fontSize: 17,
+                fontWeight: '600',
+                color: '#007AFF',
+              }}>
+                Save
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Notes Editor - Full Screen */}
+          <View style={{ flex: 1 }}>
+            <RichText
+              editor={editor}
+              style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                paddingHorizontal: 16,
+                paddingTop: 16,
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Option Set Selector Modal */}
+      <Modal
+        visible={showOptionSetSelector}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowOptionSetSelector(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+          {/* Header */}
+          <View style={{
+            paddingTop: 50,
+            paddingBottom: 16,
+            paddingHorizontal: 20,
+            backgroundColor: '#fff',
+            borderBottomWidth: 1,
+            borderBottomColor: '#E5E7EB',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <TouchableOpacity
+              onPress={() => setShowOptionSetSelector(false)}
+              style={{ padding: 8, marginLeft: -8 }}
+            >
+              <MaterialIcons name="close" size={24} color="#6B7280" />
+            </TouchableOpacity>
+
+            <Text style={{
+              fontSize: 18,
+              fontWeight: '600',
+              color: '#111827',
+              flex: 1,
+              textAlign: 'center',
+              marginHorizontal: 16,
+            }}>
+              Select Option Sets
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (selectedOptionSets.length > 0) {
+                  generateItemsFromOptionSets(selectedOptionSets);
+                } else {
+                  Alert.alert('Error', 'Please select at least one option set');
+                }
+              }}
+              style={{
+                padding: 8,
+                marginRight: -8,
+              }}
+            >
+              <Text style={{
+                fontSize: 17,
+                fontWeight: '600',
+                color: selectedOptionSets.length > 0 ? '#007AFF' : '#9CA3AF',
+              }}>
+                Generate
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 20 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {(() => {
+              // Process option sets from data
+              const optionSets = React.useMemo(() => {
+                if (!optionSetsData?.options) return [];
+
+                const setMap = new Map<string, { name: string; values: any[] }>();
+
+                optionSetsData.options.forEach((option: any) => {
+                  if (option.set) {
+                    const existing = setMap.get(option.set);
+                    if (existing) {
+                      existing.values.push(option);
+                    } else {
+                      setMap.set(option.set, {
+                        name: option.set,
+                        values: [option]
+                      });
+                    }
+                  }
+                });
+
+                return Array.from(setMap.entries()).map(([setName, data]) => ({
+                  name: setName,
+                  values: data.values.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+                }));
+              }, [optionSetsData?.options]);
+
+              if (optionSets.length === 0) {
+                return (
+                  <View style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingVertical: 60
+                  }}>
+                    <MaterialIcons name="tune" size={48} color="#9CA3AF" />
+                    <Text style={{
+                      fontSize: 18,
+                      fontWeight: '600',
+                      color: '#6B7280',
+                      marginTop: 16,
+                      textAlign: 'center'
+                    }}>
+                      No Option Sets Found
+                    </Text>
+                    <Text style={{
+                      fontSize: 14,
+                      color: '#9CA3AF',
+                      marginTop: 8,
+                      textAlign: 'center'
+                    }}>
+                      Create option sets first to generate product variants
+                    </Text>
+                  </View>
+                );
+              }
+
+              return optionSets.map((optionSet) => {
+                const isSelected = selectedOptionSets.includes(optionSet.name);
+
+                return (
+                  <TouchableOpacity
+                    key={optionSet.name}
+                    style={{
+                      backgroundColor: isSelected ? '#F0F9FF' : '#fff',
+                      borderRadius: 12,
+                      padding: 20,
+                      marginBottom: 16,
+                      borderWidth: 2,
+                      borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
+                    }}
+                    onPress={() => {
+                      if (isSelected) {
+                        // Remove from selection
+                        setSelectedOptionSets(prev => prev.filter(name => name !== optionSet.name));
+                      } else {
+                        // Add to selection (limit to 3 for option1, option2, option3)
+                        if (selectedOptionSets.length < 3) {
+                          setSelectedOptionSets(prev => [...prev, optionSet.name]);
+                        } else {
+                          Alert.alert('Limit Reached', 'You can select up to 3 option sets maximum');
+                        }
+                      }
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
+                            {optionSet.name}
+                          </Text>
+                          {isSelected && (
+                            <View style={{
+                              backgroundColor: '#3B82F6',
+                              borderRadius: 10,
+                              width: 20,
+                              height: 20,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginLeft: 8,
+                            }}>
+                              <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
+                                {selectedOptionSets.indexOf(optionSet.name) + 1}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                          {optionSet.values.length} {optionSet.values.length === 1 ? 'variant' : 'variants'}
+                        </Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+                          {optionSet.values.slice(0, 3).map((value: any) => (
+                            <View
+                              key={value.id}
+                              style={{
+                                backgroundColor: isSelected ? '#DBEAFE' : '#F3F4F6',
+                                paddingHorizontal: 8,
+                                paddingVertical: 4,
+                                borderRadius: 6,
+                                marginRight: 8,
+                                marginBottom: 4,
+                              }}
+                            >
+                              <Text style={{ fontSize: 12, color: isSelected ? '#1E40AF' : '#6B7280' }}>
+                                {value.value}
+                              </Text>
+                            </View>
+                          ))}
+                          {optionSet.values.length > 3 && (
+                            <View style={{
+                              backgroundColor: isSelected ? '#DBEAFE' : '#F3F4F6',
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              borderRadius: 6,
+                            }}>
+                              <Text style={{ fontSize: 12, color: isSelected ? '#1E40AF' : '#6B7280' }}>
+                                +{optionSet.values.length - 3} more
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      <View style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: isSelected ? '#3B82F6' : '#D1D5DB',
+                        backgroundColor: isSelected ? '#3B82F6' : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        {isSelected && (
+                          <MaterialIcons name="check" size={16} color="#fff" />
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              });
+            })()}
+          </ScrollView>
         </View>
       </Modal>
     </View>
