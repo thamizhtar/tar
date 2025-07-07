@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useStore } from '../lib/store-context';
 import StoreSelector from './store-selector';
 import StoreForm from './store-form';
 import StoreManagement from './store-mgmt';
@@ -15,21 +16,10 @@ interface FullScreenMenuProps {
 
 export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuProps) {
   const insets = useSafeAreaInsets();
+  const { currentStore } = useStore();
   const [showStoreForm, setShowStoreForm] = useState(false);
   const [showStoreManagement, setShowStoreManagement] = useState(false);
-  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
-  const toggleSubmenu = (menuId: string) => {
-    setExpandedMenus(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(menuId)) {
-        newSet.delete(menuId);
-      } else {
-        newSet.add(menuId);
-      }
-      return newSet;
-    });
-  };
 
   // Handle Android back button
   useEffect(() => {
@@ -52,48 +42,37 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
     return () => backHandler.remove();
   }, [showStoreForm, showStoreManagement, onClose]);
 
-  const menuItems = [
-    {
-      id: 'dashboard',
-      title: 'Dashboard',
-      icon: '🎈',
-    },
-    {
-      id: 'sales',
-      title: 'Sales',
-      icon: '💰',
-    },
-    {
-      id: 'reports',
-      title: 'Reports',
-      icon: '📈',
-    },
-    {
-      id: 'products',
-      title: 'Product Management',
-      icon: '📦',
-      hasSubmenu: true,
-      submenu: [
-        {
-          id: 'products',
-          title: 'Products',
-        },
-        {
-          id: 'options',
-          title: 'Options',
-        }
-      ]
-    },
-    {
-      id: 'collections',
-      title: 'Collections',
-      icon: '🏷️',
-    },
+  const cardMenuItems = [
+    // Top row
+    { id: 'dashboard', title: 'Dashboard', position: 'top-left' },
+    { id: 'reports', title: 'Reports', position: 'top-center' },
+    { id: 'sales', title: 'Sales', position: 'top-right' },
+
+    // Middle section
+    { id: 'inventory', title: 'Inventory', position: 'middle-left', hasQR: true },
+    { id: 'store', title: 'Store A', position: 'middle-right', isStore: true },
+
+    // Bottom row
+    { id: 'products', title: 'Products', position: 'bottom-left' },
+    { id: 'collections', title: 'Collections', position: 'bottom-right' },
+  ];
+
+  const additionalMenuItems = [
+    { id: 'options', title: 'Options' },
+    { id: 'metafields', title: 'Metafields' },
   ];
 
   const handleItemPress = (item: any) => {
-    if (item.hasSubmenu) {
-      toggleSubmenu(item.id);
+    // Handle special cases
+    if (item.id === 'inventory') {
+      // Navigate to products screen for inventory
+      onNavigate('products' as Screen);
+    } else if (item.id === 'store') {
+      // Handle store selection/management
+      setShowStoreManagement(true);
+    } else if (item.id === 'metafields') {
+      // Handle metafields navigation (placeholder for now)
+      console.log('Metafields navigation not implemented yet');
     } else {
       onNavigate(item.id as Screen);
     }
@@ -131,59 +110,82 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
         </View>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 bg-white" showsVerticalScrollIndicator={false}>
         <View className="px-4 pt-8">
-          {/* Store Selector */}
-          <StoreSelector
-            onCreateStore={() => setShowStoreForm(true)}
-            onEditStores={() => setShowStoreManagement(true)}
-          />
-          {/* Menu Items */}
-          <View className="mb-8">
-            {menuItems.map((item) => (
-              <View key={item.id}>
-                <TouchableOpacity
-                  onPress={() => handleItemPress(item)}
-                  className="flex-row items-center py-4 border-b border-gray-100"
-                >
-                  <Text className="text-2xl mr-4">{item.icon}</Text>
-                  <Text className="flex-1 text-lg font-medium text-gray-900">
-                    {item.title}
-                  </Text>
-                  {item.hasSubmenu ? (
-                    <MaterialIcons
-                      name={expandedMenus.has(item.id) ? "keyboard-arrow-down" : "keyboard-arrow-right"}
-                      size={24}
-                      color="#9CA3AF"
-                    />
-                  ) : (
-                    <Text className="text-gray-400 text-xl">›</Text>
-                  )}
-                </TouchableOpacity>
+          {/* Main Menu Card - Clean & Aligned */}
+          <View className="bg-white border border-gray-200 rounded-xl mb-6 overflow-hidden">
+            {/* Top Row: Dashboard, Reports, Sales */}
+            <View className="flex-row border-b border-gray-200">
+              <TouchableOpacity
+                onPress={() => handleItemPress({ id: 'dashboard' })}
+                className="flex-1 py-5 border-r border-gray-200 items-center justify-center"
+              >
+                <Text className="text-gray-900 text-base font-medium">Dashboard</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleItemPress({ id: 'reports' })}
+                className="flex-1 py-5 border-r border-gray-200 items-center justify-center"
+              >
+                <Text className="text-gray-900 text-base font-medium">Reports</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleItemPress({ id: 'sales' })}
+                className="flex-1 py-5 items-center justify-center"
+              >
+                <Text className="text-gray-900 text-base font-medium">Sales</Text>
+              </TouchableOpacity>
+            </View>
 
-                {/* Submenu Items */}
-                {item.hasSubmenu && expandedMenus.has(item.id) && item.submenu && (
-                  <View>
-                    {item.submenu.map((subItem: any) => (
-                      <TouchableOpacity
-                        key={subItem.id}
-                        onPress={() => onNavigate(subItem.id as Screen)}
-                        className="flex-row items-center py-4 border-b border-gray-100 bg-gray-50"
-                      >
-                        <Text className="text-2xl mr-4">{subItem.icon}</Text>
-                        <Text className="flex-1 text-lg font-medium text-gray-900">
-                          {subItem.title}
-                        </Text>
-                        <Text className="text-gray-400 text-xl">›</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-            ))}
+            {/* Middle Section: Inventory with QR + Store */}
+            <View className="flex-row border-b border-gray-200">
+              <TouchableOpacity
+                onPress={() => handleItemPress({ id: 'inventory' })}
+                className="flex-1 px-5 py-5 border-r border-gray-200 flex-row items-center justify-between"
+              >
+                <Text className="text-gray-900 text-base font-medium">Inventory</Text>
+                <View className="w-7 h-7 bg-gray-900 rounded items-center justify-center">
+                  <Text className="text-white text-xs font-medium">QR</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowStoreManagement(true)}
+                className="flex-1 px-5 py-5 items-center justify-center"
+              >
+                <Text className="text-blue-600 text-base font-semibold">
+                  {currentStore?.name || 'Store'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Bottom Row: Products, Collections */}
+            <View className="flex-row">
+              <TouchableOpacity
+                onPress={() => handleItemPress({ id: 'products' })}
+                className="flex-1 py-5 border-r border-gray-200 items-center justify-center"
+              >
+                <Text className="text-gray-900 text-base font-medium">Products</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleItemPress({ id: 'collections' })}
+                className="flex-1 py-5 items-center justify-center"
+              >
+                <Text className="text-gray-900 text-base font-medium">Collections</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-
+          {/* Additional Menu Items */}
+          <View className="mb-8">
+            {additionalMenuItems.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                onPress={() => handleItemPress(item)}
+                className="py-4"
+              >
+                <Text className="text-gray-900 text-base font-medium">{item.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
 
