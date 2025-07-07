@@ -318,7 +318,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         await Promise.all(deletePromises);
       }
 
-      // Get options for each selected set
+      // Get options for each selected set and group by their group field
       const optionArrays: any[][] = [];
 
       for (const setName of optionSetNames.slice(0, 3)) { // Limit to 3 option sets (option1, option2, option3)
@@ -327,7 +327,23 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         ) || [];
 
         if (setOptions.length > 0) {
-          optionArrays.push(setOptions.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
+          // Group options by their group field (Color, Size, etc.)
+          const groupMap = new Map<string, any[]>();
+
+          setOptions.forEach((option: any) => {
+            const group = option.group || 'default';
+            if (!groupMap.has(group)) {
+              groupMap.set(group, []);
+            }
+            groupMap.get(group)!.push(option);
+          });
+
+          // Sort groups and add each group as a separate dimension
+          const sortedGroups = Array.from(groupMap.keys()).sort();
+          sortedGroups.forEach(groupName => {
+            const groupOptions = groupMap.get(groupName)!;
+            optionArrays.push(groupOptions.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)));
+          });
         }
       }
 
