@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated, ScrollView, Keyboard, Platform } from 'react-native';
 import { id } from '@instantdb/react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -117,6 +117,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showStatusDrawer, setShowStatusDrawer] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   // Initialize 10tap editor
@@ -124,6 +125,27 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     autofocus: false,
     avoidIosKeyboard: true,
     initialContent: formData.notes || '',
+    theme: {
+      toolbar: {
+        toolbarBody: {
+          backgroundColor: Platform.OS === 'ios' ? '#D1D5DB' : '#404040',
+          borderTopWidth: Platform.OS === 'ios' ? 1 : 0,
+          borderTopColor: Platform.OS === 'ios' ? '#9CA3AF' : 'transparent',
+          borderBottomWidth: 0,
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          minHeight: Platform.OS === 'ios' ? 44 : 48,
+        },
+        toolbarItem: {
+          color: Platform.OS === 'ios' ? '#000000' : '#FFFFFF',
+          backgroundColor: 'transparent',
+        },
+        toolbarItemActive: {
+          color: Platform.OS === 'ios' ? '#007AFF' : '#4A9EFF',
+          backgroundColor: 'transparent',
+        },
+      },
+    },
   });
 
   // Handle editor content changes
@@ -173,7 +195,29 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     }
   }, [selectedCollectionId, productCollection?.id, isEditing]);
 
+  // Handle keyboard events for notes toolbar positioning
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      (e) => {
+        if (activeTab === 'notes') {
+          setKeyboardHeight(e.endCoordinates.height);
+        }
+      }
+    );
 
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
+  }, [activeTab]);
 
   // Handle Android back button
   useEffect(() => {
@@ -708,20 +752,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 borderColor: '#E5E7EB',
                 borderRadius: 8,
                 backgroundColor: '#fff',
-                marginBottom: 16,
               }}
             />
-
-            {/* 10tap Toolbar */}
-            <View style={{
-              backgroundColor: '#F9FAFB',
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-              borderRadius: 8,
-              minHeight: 50,
-            }}>
-              <Toolbar editor={editor} />
-            </View>
           </View>
         </TabContent>
       ),
@@ -732,79 +764,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       icon: <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280' }}>I</Text>,
       content: (
         <TabContent title="">
-          <FieldGroup title="Product Details">
-            <Input
-              label="SKU"
-              placeholder="Enter SKU"
-              value={formData.sku}
-              onChangeText={(value) => updateField('sku', value)}
-              variant="outline"
-            />
-            <Input
-              label="Unit"
-              placeholder="e.g., pieces, kg, liters"
-              value={formData.unit}
-              onChangeText={(value) => updateField('unit', value)}
-              variant="outline"
-            />
-          </FieldGroup>
-
-          <FieldGroup title="Prices">
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label="Price"
-                  placeholder="0.00"
-                  value={formData.price}
-                  onChangeText={(value) => updateField('price', value)}
-                  keyboardType="decimal-pad"
-                  variant="outline"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label="Sale Price"
-                  placeholder="0.00"
-                  value={formData.saleprice}
-                  onChangeText={(value) => updateField('saleprice', value)}
-                  keyboardType="decimal-pad"
-                  variant="outline"
-                />
-              </View>
-            </View>
-            <Input
-              label="Cost"
-              placeholder="0.00"
-              value={formData.cost}
-              onChangeText={(value) => updateField('cost', value)}
-              keyboardType="decimal-pad"
-              variant="outline"
-            />
-          </FieldGroup>
-
-          <FieldGroup title="Stock">
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              backgroundColor: '#F9FAFB',
-              padding: 16,
-              borderRadius: 8
-            }}>
-              <Text style={{ fontSize: 16, color: '#111827' }}>Stock Quantity</Text>
-              <QuantitySelector
-                value={formData.stock}
-                onValueChange={(value) => updateField('stock', value)}
-                size="medium"
-              />
-            </View>
-            <View style={{ backgroundColor: '#EFF6FF', padding: 16, borderRadius: 8 }}>
-              <Text style={{ fontSize: 14, color: '#1E40AF', fontWeight: '500' }}>Stock Status</Text>
-              <Text style={{ color: '#2563EB', marginTop: 4 }}>
-                {formData.stock > 10 ? 'In Stock' : formData.stock > 0 ? 'Low Stock' : 'Out of Stock'}
-              </Text>
-            </View>
-          </FieldGroup>
+          {/* Empty content */}
         </TabContent>
       ),
     },
@@ -814,86 +774,108 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-      {/* Horizontal Tabs - Icons Only */}
-      <View style={{
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-        paddingTop: 8,
-      }}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-        >
-          {tabs.map((tab) => {
-            const isActive = tab.id === activeTab;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                onPress={() => setActiveTab(tab.id)}
-                style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  marginRight: 8,
-                  borderBottomWidth: 2,
-                  borderBottomColor: isActive ? '#3B82F6' : 'transparent',
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={{
-                  alignItems: 'center',
-                  opacity: isActive ? 1 : 0.6
-                }}>
-                  {tab.icon}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Save Button - Check Icon on Blue Circle */}
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={loading}
-            style={{
-              paddingVertical: 12,
-              paddingHorizontal: 16,
-              marginLeft: 8,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={{
-              width: 32,
-              height: 32,
-              backgroundColor: loading ? '#9CA3AF' : '#3B82F6',
-              borderRadius: 16,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <MaterialIcons
-                name="check"
-                size={20}
-                color="#fff"
-              />
-            </View>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
       {/* Content Area */}
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
         {activeTabData && (
           <ScrollView
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 32 }}
+            contentContainerStyle={{ paddingBottom: 100 }}
           >
             {activeTabData.content}
           </ScrollView>
         )}
       </View>
+
+      {/* Bottom Floating Tab Bar - Modern Android Design */}
+      <View style={{
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        backgroundColor: '#fff',
+        borderRadius: 28,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-around',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+      }}>
+        {tabs.map((tab) => {
+          const isActive = tab.id === activeTab;
+          return (
+            <TouchableOpacity
+              key={tab.id}
+              onPress={() => setActiveTab(tab.id)}
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                borderRadius: 20,
+                backgroundColor: isActive ? '#F0F9FF' : 'transparent',
+                minWidth: 48,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={{
+                alignItems: 'center',
+                opacity: isActive ? 1 : 0.6
+              }}>
+                {React.cloneElement(tab.icon as React.ReactElement, {
+                  style: {
+                    ...((tab.icon as React.ReactElement).props.style || {}),
+                    color: isActive ? '#3B82F6' : '#6B7280'
+                  }
+                })}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+
+        {/* Save Button - Check Icon on Blue Circle */}
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={loading}
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={{
+            width: 40,
+            height: 40,
+            backgroundColor: loading ? '#9CA3AF' : '#3B82F6',
+            borderRadius: 20,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <MaterialIcons
+              name="check"
+              size={22}
+              color="#fff"
+            />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Notes Toolbar - Attached to Keyboard */}
+      {activeTab === 'notes' && keyboardHeight > 0 && (
+        <View style={{
+          position: 'absolute',
+          bottom: keyboardHeight,
+          left: 0,
+          right: 0,
+          zIndex: 1000,
+        }}>
+          <Toolbar editor={editor} />
+        </View>
+      )}
 
 
 
