@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated, ScrollView, Keyboard, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { id } from '@instantdb/react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -47,6 +48,7 @@ interface ProductFormScreenProps {
 
 export default function ProductFormScreen({ product, onClose, onSave }: ProductFormScreenProps) {
   const { currentStore } = useStore();
+  const insets = useSafeAreaInsets();
   const isEditing = !!product;
 
   // Query product with collection relationship using useQuery
@@ -144,6 +146,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showFullScreenNotesEditor, setShowFullScreenNotesEditor] = useState(false);
   const [showOptionSetSelector, setShowOptionSetSelector] = useState(false);
   const [selectedOptionSets, setSelectedOptionSets] = useState<string[]>([]);
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+
+  // Items search and filter states
+  const [itemsSearchQuery, setItemsSearchQuery] = useState('');
+  const [showItemsFilter, setShowItemsFilter] = useState(false);
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
   // Initialize 10tap editor - Shopify Style
   const editor = useEditorBridge({
@@ -220,10 +228,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (selectedCollectionId !== productCollection?.id) {
         setHasChanges(true);
       }
-    } else if (!isEditing && selectedCollectionId) {
-      // If we're creating new product and collection is selected
-      setHasChanges(true);
     }
+    // For new products, don't automatically set hasChanges just because a collection is selected
+    // Only set hasChanges when user actually makes changes via updateField
   }, [selectedCollectionId, productCollection?.id, isEditing]);
 
   // Handle keyboard events for notes toolbar positioning
@@ -254,14 +261,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   useEffect(() => {
     const backAction = () => {
       if (hasChanges) {
-        Alert.alert(
-          'Unsaved Changes',
-          'You have unsaved changes. Are you sure you want to go back?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Discard', style: 'destructive', onPress: onClose }
-          ]
-        );
+        setShowUnsavedChangesModal(true);
         return true;
       }
       onClose();
@@ -272,12 +272,60 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     return () => backHandler.remove();
   }, [hasChanges, onClose]);
 
+  // Function to check if there are actual changes
+  const checkForChanges = (newFormData: any) => {
+    if (!product) {
+      // For new products, check if any meaningful fields have been filled
+      const hasContent = newFormData.title.trim() ||
+                        newFormData.image ||
+                        newFormData.excerpt.trim() ||
+                        newFormData.notes.trim() ||
+                        newFormData.type.trim() ||
+                        newFormData.category.trim() ||
+                        newFormData.price.trim() ||
+                        newFormData.sku.trim();
+      return !!hasContent;
+    }
+
+    // For existing products, compare with original values
+    const originalData = {
+      title: product.title || '',
+      image: product.image || '',
+      excerpt: product.excerpt || '',
+      notes: product.notes || '',
+      type: product.type || '',
+      category: product.category || '',
+      unit: product.unit || '',
+      sku: product.sku || '',
+      price: product.price?.toString() || '',
+      saleprice: product.saleprice?.toString() || '',
+      vendor: product.vendor || '',
+      brand: product.brand || '',
+      cost: product.cost?.toString() || '',
+      tags: product.tags || '',
+      pos: product.pos ?? false,
+      website: product.website ?? false,
+      status: product.status ?? true,
+    };
+
+    // Check if any field has changed
+    return Object.keys(originalData).some(key => {
+      const original = originalData[key as keyof typeof originalData];
+      const current = newFormData[key];
+      return original !== current;
+    });
+  };
+
   const updateField = (field: string, value: any) => {
     if (field === 'image') {
       setImageError(false); // Reset image error when image URL changes
     }
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setHasChanges(true); // Mark that changes have been made
+
+    const newFormData = { ...formData, [field]: value };
+    setFormData(newFormData);
+
+    // Only set hasChanges if there are actual changes
+    setHasChanges(checkForChanges(newFormData));
   };
 
   const updateOptions = () => {
@@ -290,12 +338,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   const handleMediaChange = useCallback((media: MediaItem[]) => {
     setImageError(false); // Reset image error when media changes
-    setFormData(prev => ({
-      ...prev,
-      medias: media,
-    }));
-    setHasChanges(true); // Mark that changes have been made
-  }, []);
+    const newFormData = { ...formData, medias: media };
+    setFormData(newFormData);
+
+    // Only set hasChanges if there are actual changes
+    setHasChanges(checkForChanges(newFormData));
+  }, [formData, product]);
 
   const generateItemsFromOptionSets = async (optionSetNames: string[]) => {
     if (!product?.id || !currentStore?.id) {
@@ -962,6 +1010,35 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
             {(() => {
               const items = productItemsData?.items || [];
 
+              // Get all unique option values for filtering
+              const allOptionValues = new Set<string>();
+              items.forEach((item: any) => {
+                if (item.option1) allOptionValues.add(item.option1);
+                if (item.option2) allOptionValues.add(item.option2);
+                if (item.option3) allOptionValues.add(item.option3);
+              });
+              const optionValuesList = Array.from(allOptionValues).sort();
+
+              // Filter items based on search query and selected filters
+              const filteredItems = items.filter((item: any) => {
+                // Search filter
+                const searchMatch = !itemsSearchQuery ||
+                  (item.sku && item.sku.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
+                  (item.option1 && item.option1.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
+                  (item.option2 && item.option2.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
+                  (item.option3 && item.option3.toLowerCase().includes(itemsSearchQuery.toLowerCase()));
+
+                // Option value filter
+                const filterMatch = selectedFilters.length === 0 ||
+                  selectedFilters.some(filter =>
+                    item.option1 === filter ||
+                    item.option2 === filter ||
+                    item.option3 === filter
+                  );
+
+                return searchMatch && filterMatch;
+              });
+
               if (items.length === 0) {
                 return (
                   <View style={{
@@ -995,55 +1072,136 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               }
 
               return (
-                <ScrollView showsVerticalScrollIndicator={false}>
-                  {items.map((item: any) => (
-                    <View
-                      key={item.id}
+                <View>
+                  {/* Search Bar */}
+                  <View style={{
+                    flexDirection: 'row',
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    backgroundColor: '#F9FAFB',
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#E5E7EB',
+                    gap: 8,
+                  }}>
+                    <View style={{
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: '#fff',
+                      borderRadius: 8,
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderWidth: 1,
+                      borderColor: '#E5E7EB',
+                    }}>
+                      <MaterialIcons name="search" size={20} color="#9CA3AF" />
+                      <TextInput
+                        style={{
+                          flex: 1,
+                          marginLeft: 8,
+                          fontSize: 16,
+                          color: '#111827',
+                        }}
+                        placeholder="Search items..."
+                        placeholderTextColor="#9CA3AF"
+                        value={itemsSearchQuery}
+                        onChangeText={setItemsSearchQuery}
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={() => setShowItemsFilter(true)}
                       style={{
-                        backgroundColor: '#fff',
-                        borderBottomWidth: 1,
-                        borderBottomColor: '#E5E7EB',
-                        paddingVertical: 16,
-                        paddingHorizontal: 16,
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        backgroundColor: selectedFilters.length > 0 ? '#3B82F6' : '#fff',
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: selectedFilters.length > 0 ? '#3B82F6' : '#E5E7EB',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
-                            {item.sku || 'No SKU'}
-                          </Text>
-                          {item.option1 && (
-                            <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
-                              {item.option1}
-                              {item.option2 && ` • ${item.option2}`}
-                              {item.option3 && ` • ${item.option3}`}
+                      <MaterialIcons
+                        name="filter-list"
+                        size={20}
+                        color={selectedFilters.length > 0 ? '#fff' : '#6B7280'}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Items List */}
+                  <ScrollView showsVerticalScrollIndicator={false}>
+                    {filteredItems.map((item: any) => (
+                      <View
+                        key={item.id}
+                        style={{
+                          backgroundColor: '#fff',
+                          borderBottomWidth: 1,
+                          borderBottomColor: '#E5E7EB',
+                          paddingVertical: 16,
+                          paddingHorizontal: 16,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
+                              {item.sku || 'No SKU'}
                             </Text>
-                          )}
-                          <View style={{ flexDirection: 'row', marginTop: 4 }}>
-                            <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
-                              Stock: {item.onhand || 0}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 16 }}>
-                              Price: ${(item.price || 0).toFixed(2)}
-                            </Text>
+                            {item.option1 && (
+                              <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
+                                {item.option1}
+                                {item.option2 && ` • ${item.option2}`}
+                                {item.option3 && ` • ${item.option3}`}
+                              </Text>
+                            )}
+                            <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                              <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
+                                Stock: {item.onhand || 0}
+                              </Text>
+                              <Text style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 16 }}>
+                                Price: ${(item.price || 0).toFixed(2)}
+                              </Text>
+                            </View>
                           </View>
-                        </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <View style={{
-                            backgroundColor: item.available > 0 ? '#10B981' : '#EF4444',
-                            paddingHorizontal: 8,
-                            paddingVertical: 4,
-                            borderRadius: 12,
-                          }}>
-                            <Text style={{ fontSize: 12, fontWeight: '500', color: '#fff' }}>
-                              {item.available > 0 ? 'Available' : 'Out of Stock'}
-                            </Text>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <View style={{
+                              backgroundColor: item.available > 0 ? '#10B981' : '#EF4444',
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              borderRadius: 12,
+                            }}>
+                              <Text style={{ fontSize: 12, fontWeight: '500', color: '#fff' }}>
+                                {item.available > 0 ? 'Available' : 'Out of Stock'}
+                              </Text>
+                            </View>
                           </View>
                         </View>
                       </View>
-                    </View>
-                  ))}
-                </ScrollView>
+                    ))}
+
+                    {filteredItems.length === 0 && items.length > 0 && (
+                      <View style={{
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingVertical: 40,
+                        paddingHorizontal: 20
+                      }}>
+                        <MaterialIcons name="search-off" size={48} color="#9CA3AF" />
+                        <Text style={{
+                          fontSize: 16,
+                          fontWeight: '500',
+                          color: '#6B7280',
+                          marginTop: 16,
+                          textAlign: 'center'
+                        }}>
+                          No items match your search
+                        </Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
               );
             })()}
           </View>
@@ -1055,7 +1213,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const activeTabData = tabs.find(tab => tab.id === activeTab);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+    <View style={{
+      flex: 1,
+      backgroundColor: '#fff',
+      paddingTop: insets.top,
+      paddingBottom: insets.bottom
+    }}>
       {/* Content Area */}
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
         {activeTabData && (
@@ -1072,7 +1235,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       {/* Bottom Floating Tab Bar - Modern Android Design */}
       <View style={{
         position: 'absolute',
-        bottom: 20,
+        bottom: 20 + insets.bottom,
         left: 20,
         right: 20,
         backgroundColor: '#fff',
@@ -1129,7 +1292,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         {/* Save Button - Check Icon on Blue Circle */}
         <TouchableOpacity
           onPress={handleSave}
-          disabled={loading}
+          disabled={loading || !hasChanges}
           style={{
             paddingVertical: 8,
             paddingHorizontal: 8,
@@ -1141,7 +1304,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
           <View style={{
             width: 40,
             height: 40,
-            backgroundColor: loading ? '#9CA3AF' : '#3B82F6',
+            backgroundColor: loading ? '#9CA3AF' : hasChanges ? '#3B82F6' : '#E5E7EB',
             borderRadius: 20,
             alignItems: 'center',
             justifyContent: 'center',
@@ -1149,7 +1312,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
             <MaterialIcons
               name="check"
               size={22}
-              color="#fff"
+              color={hasChanges ? "#fff" : "#9CA3AF"}
             />
           </View>
         </TouchableOpacity>
@@ -1627,7 +1790,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
           {/* Header */}
           <View style={{
-            paddingTop: 50, // Account for status bar
+            paddingTop: insets.top,
             paddingBottom: 16,
             paddingHorizontal: 20,
             backgroundColor: '#fff',
@@ -1791,7 +1954,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         <View style={{ flex: 1, backgroundColor: '#fff' }}>
           {/* Header - Shopify Style */}
           <View style={{
-            paddingTop: 50, // Account for status bar
+            paddingTop: insets.top,
             paddingBottom: 12,
             paddingHorizontal: 16,
             backgroundColor: '#fff',
@@ -1864,7 +2027,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
           {/* Header */}
           <View style={{
-            paddingTop: 50,
+            paddingTop: insets.top,
             paddingBottom: 16,
             paddingHorizontal: 20,
             backgroundColor: '#fff',
@@ -2081,6 +2244,244 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   </TouchableOpacity>
                 );
               });
+            })()}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Custom Unsaved Changes Bottom Drawer */}
+      <Modal
+        visible={showUnsavedChangesModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowUnsavedChangesModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+        }}>
+          <View style={{
+            backgroundColor: '#fff',
+            paddingTop: 20,
+            paddingBottom: 20 + insets.bottom,
+            paddingHorizontal: 20,
+          }}>
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '500',
+              color: '#111827',
+              marginBottom: 16,
+              textAlign: 'center',
+            }}>
+              Unsaved Changes
+            </Text>
+
+            <View style={{
+              flexDirection: 'row',
+              gap: 12,
+            }}>
+              <TouchableOpacity
+                onPress={() => setShowUnsavedChangesModal(false)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  backgroundColor: '#F3F4F6',
+                }}
+              >
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '500',
+                  color: '#374151',
+                }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setShowUnsavedChangesModal(false);
+                  onClose();
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 14,
+                  alignItems: 'center',
+                  backgroundColor: '#3B82F6',
+                }}
+              >
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '500',
+                  color: '#fff',
+                }}>
+                  Discard
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Items Filter Full Screen Modal */}
+      <Modal
+        visible={showItemsFilter}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowItemsFilter(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+          {/* Header */}
+          <View style={{
+            paddingTop: insets.top,
+            paddingBottom: 12,
+            paddingHorizontal: 16,
+            backgroundColor: '#fff',
+            borderBottomWidth: 0.5,
+            borderBottomColor: '#E1E1E1',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <TouchableOpacity
+              onPress={() => setShowItemsFilter(false)}
+              style={{
+                padding: 8,
+                marginLeft: -8,
+              }}
+            >
+              <MaterialIcons name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
+
+            <Text style={{
+              fontSize: 17,
+              fontWeight: '600',
+              color: '#000',
+              flex: 1,
+              textAlign: 'center',
+              marginHorizontal: 16,
+            }}>
+              Filter Items
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedFilters([]);
+                setShowItemsFilter(false);
+              }}
+              style={{
+                padding: 8,
+                marginRight: -8,
+              }}
+            >
+              <Text style={{
+                fontSize: 16,
+                fontWeight: '500',
+                color: '#3B82F6',
+              }}>
+                Clear
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Filter Content */}
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            {(() => {
+              const items = productItemsData?.items || [];
+              const allOptionValues = new Set<string>();
+              items.forEach((item: any) => {
+                if (item.option1) allOptionValues.add(item.option1);
+                if (item.option2) allOptionValues.add(item.option2);
+                if (item.option3) allOptionValues.add(item.option3);
+              });
+              const optionValuesList = Array.from(allOptionValues).sort();
+
+              if (optionValuesList.length === 0) {
+                return (
+                  <View style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingVertical: 60,
+                  }}>
+                    <MaterialIcons name="filter-list-off" size={48} color="#9CA3AF" />
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '500',
+                      color: '#6B7280',
+                      marginTop: 16,
+                      textAlign: 'center'
+                    }}>
+                      No option values to filter by
+                    </Text>
+                  </View>
+                );
+              }
+
+              return (
+                <View>
+                  <Text style={{
+                    fontSize: 18,
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: 16,
+                  }}>
+                    Option Values
+                  </Text>
+
+                  {optionValuesList.map((optionValue) => {
+                    const isSelected = selectedFilters.includes(optionValue);
+                    return (
+                      <TouchableOpacity
+                        key={optionValue}
+                        onPress={() => {
+                          if (isSelected) {
+                            setSelectedFilters(prev => prev.filter(f => f !== optionValue));
+                          } else {
+                            setSelectedFilters(prev => [...prev, optionValue]);
+                          }
+                        }}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingVertical: 16,
+                          paddingHorizontal: 16,
+                          backgroundColor: '#fff',
+                          borderRadius: 8,
+                          marginBottom: 8,
+                          borderWidth: 1,
+                          borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
+                        }}
+                      >
+                        <View style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          borderWidth: 2,
+                          borderColor: isSelected ? '#3B82F6' : '#D1D5DB',
+                          backgroundColor: isSelected ? '#3B82F6' : 'transparent',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 12,
+                        }}>
+                          {isSelected && (
+                            <MaterialIcons name="check" size={12} color="#fff" />
+                          )}
+                        </View>
+
+                        <Text style={{
+                          fontSize: 16,
+                          fontWeight: '500',
+                          color: isSelected ? '#3B82F6' : '#111827',
+                          flex: 1,
+                        }}>
+                          {optionValue}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              );
             })()}
           </ScrollView>
         </View>

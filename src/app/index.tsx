@@ -3,6 +3,7 @@ import { Text, View, TouchableOpacity, BackHandler } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from '@expo/vector-icons';
 import ProductsScreen from "../components/products";
+import ProductFormScreen from "../components/prod-form";
 import CollectionsScreen from "../components/collections";
 import ProductsManagementScreen from "../components/prod-mgmt";
 import CollectionsManagementScreen from "../components/col-mgmt";
@@ -131,6 +132,22 @@ export default function Page() {
   }, []);
 
   const renderMainContent = () => {
+    // If product form is open, render it full screen
+    if (isProductFormOpen) {
+      return (
+        <ProductFormScreen
+          product={productFormProduct}
+          onClose={() => {
+            setProductFormProduct(null);
+            setIsProductFormOpen(false);
+          }}
+          onSave={() => {
+            // Refresh will happen automatically due to real-time updates
+          }}
+        />
+      );
+    }
+
     // For products and collections screens, check if we should show management view
     if (currentScreen === 'products' && showManagement) {
       return <ProductsManagementScreen />;
@@ -192,8 +209,8 @@ export default function Page() {
     <StoreProvider>
       <ErrorBoundary>
         <View className="flex flex-1">
-          {currentScreen === 'menu' || currentScreen === 'options' ? (
-            // Full screen screens without header or bottom navigation
+          {currentScreen === 'menu' || currentScreen === 'options' || isProductFormOpen ? (
+            // Full screen screens without header or bottom navigation (including product form)
             <ErrorBoundary>
               {renderMainContent()}
             </ErrorBoundary>
@@ -386,11 +403,11 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
   const insets = useSafeAreaInsets();
 
   const getScreenInfo = (screen: Screen) => {
-    // If product form is open, show product title
+    // If product form is open, show product title without "Products:" prefix
     if (screen === 'products' && isProductFormOpen) {
       const productTitle = productFormProduct?.title || '';
       return {
-        title: `Products : ${productTitle}`,
+        title: productTitle,
         icon: '📦'
       };
     }
@@ -429,32 +446,7 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
           </View>
         </TouchableOpacity>
 
-        {currentScreen !== 'menu' && (
-          <View className="flex flex-row items-center">
-            {/* Square icon replaces toggle button on all screens */}
-            {(currentScreen === 'products' || currentScreen === 'collections') ? (
-              /* Square icon for management screen toggle on products/collections */
-              <TouchableOpacity
-                onPress={() => setShowManagement(!showManagement)}
-                className={`px-3 py-2 rounded-lg ${
-                  showManagement ? 'bg-blue-100' : ''
-                }`}
-              >
-                <Feather name="square" size={24} color={showManagement ? "#2563eb" : "black"} />
-              </TouchableOpacity>
-            ) : (
-              /* Square icon for bottom tabs toggle on other screens */
-              <TouchableOpacity
-                onPress={() => setShowBottomTabs(!showBottomTabs)}
-                className={`px-3 py-2 rounded-lg ${
-                  !showBottomTabs ? 'bg-blue-100' : ''
-                }`}
-              >
-                <Feather name="square" size={24} color={!showBottomTabs ? "#2563eb" : "black"} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+
       </View>
     </View>
   );
