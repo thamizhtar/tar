@@ -102,19 +102,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     } : {}
   );
 
-  // Query metafield values for this product
-  const { data: productMetafieldsData } = db.useQuery(
-    product?.id && currentStore?.id ? {
-      metafields: {
-        $: {
-          where: {
-            storeId: currentStore.id,
-            parentid: product.id
-          }
-        }
-      }
-    } : {}
-  );
+
 
   const [formData, setFormData] = useState({
     // Use title as primary field (schema uses title, not name)
@@ -203,7 +191,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [showPrimaryImageActions, setShowPrimaryImageActions] = useState(false);
   const [showMetafields, setShowMetafields] = useState(false);
-  const [selectedMetafieldGroups, setSelectedMetafieldGroups] = useState<string[]>([]);
+  const [selectedMetafieldGroup, setSelectedMetafieldGroup] = useState<string>('');
   const [metafieldValues, setMetafieldValues] = useState<Record<string, any>>({});
   const [showMetafieldGroupSelector, setShowMetafieldGroupSelector] = useState(false);
 
@@ -269,26 +257,29 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   // Initialize metafield values from product data
   useEffect(() => {
-    if (productMetafieldsData?.metafields && metafieldDefinitionsData?.metafields) {
+    if (product?.metafields && metafieldDefinitionsData?.metafields) {
       const values: Record<string, any> = {};
-      const selectedGroups: string[] = [];
+      let selectedGroup = '';
 
-      productMetafieldsData.metafields.forEach((field: any) => {
-        if (field?.title && field?.value !== undefined) {
-          values[field.title] = field.value;
+      // product.metafields is an object with field titles as keys
+      Object.entries(product.metafields).forEach(([fieldTitle, fieldData]: [string, any]) => {
+        if (fieldData?.value !== undefined) {
+          values[fieldTitle] = fieldData.value;
 
-          // Find the group for this field
-          const definition = metafieldDefinitionsData.metafields.find((def: any) => def.title === field.title);
-          if (definition?.group && !selectedGroups.includes(definition.group)) {
-            selectedGroups.push(definition.group);
+          // Find the group for this field (use the first group found)
+          if (!selectedGroup) {
+            const definition = metafieldDefinitionsData.metafields.find((def: any) => def.title === fieldTitle);
+            if (definition?.group) {
+              selectedGroup = definition.group;
+            }
           }
         }
       });
 
       setMetafieldValues(values);
-      setSelectedMetafieldGroups(selectedGroups);
+      setSelectedMetafieldGroup(selectedGroup);
     }
-  }, [productMetafieldsData, metafieldDefinitionsData]);
+  }, [product?.metafields, metafieldDefinitionsData]);
 
 
 
@@ -320,7 +311,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                         newFormData.price.trim() ||
                         newFormData.sku.trim() ||
                         (newFormData.tags && newFormData.tags.length > 0) ||
-                        selectedMetafieldGroups.length > 0;
+                        selectedMetafieldGroup.length > 0;
       return !!hasContent;
     }
 
@@ -359,27 +350,29 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     });
 
     // Check if metafields have changed
-    const originalMetafields = productMetafieldsData?.metafields || [];
+    const originalMetafields = product?.metafields || {};
     const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
 
-    // Get original groups
-    const originalGroups: string[] = [];
-    originalMetafields.forEach((field: any) => {
-      const definition = metafieldDefinitions.find((def: any) => def.title === field.title);
-      if (definition?.group && !originalGroups.includes(definition.group)) {
-        originalGroups.push(definition.group);
+    // Get original group (first group found)
+    let originalGroup = '';
+    Object.entries(originalMetafields).forEach(([fieldTitle, fieldData]: [string, any]) => {
+      if (!originalGroup) {
+        const definition = metafieldDefinitions.find((def: any) => def.title === fieldTitle);
+        if (definition?.group) {
+          originalGroup = definition.group;
+        }
       }
     });
 
     const originalValues: Record<string, any> = {};
-    originalMetafields.forEach((f: any) => {
-      if (f?.title && f?.value !== undefined) {
-        originalValues[f.title] = f.value;
+    Object.entries(originalMetafields).forEach(([fieldTitle, fieldData]: [string, any]) => {
+      if (fieldData?.value !== undefined) {
+        originalValues[fieldTitle] = fieldData.value;
       }
     });
 
     const metafieldsChanged =
-      JSON.stringify(originalGroups.sort()) !== JSON.stringify(selectedMetafieldGroups.sort()) ||
+      originalGroup !== selectedMetafieldGroup ||
       Object.keys(metafieldValues).some(key => metafieldValues[key] !== originalValues[key]);
 
     return fieldChanged || metafieldsChanged;
@@ -405,55 +398,31 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     updateField('options', optionsData);
   };
 
-  const handleMetafieldGroupSelection = (groupName: string, isSelected: boolean) => {
-    if (isSelected) {
-      setSelectedMetafieldGroups(prev => [...prev, groupName]);
+  const handleMetafieldGroupSelection = (groupName: string) => {
+    if (selectedMetafieldGroup === groupName) {
+      // Deselect current group
+      setSelectedMetafieldGroup('');
+      // Clear all metafield values
+      setMetafieldValues({});
     } else {
-      setSelectedMetafieldGroups(prev => prev.filter(group => group !== groupName));
-      // Remove values for all fields in this group when deselecting
+      // Select new group
+      setSelectedMetafieldGroup(groupName);
+      // Clear previous values and initialize with default values for new group
       const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
-      const fieldsInGroup = metafieldDefinitions.filter((def: any) => def.group === groupName);
+      const fieldsInGroup = metafieldDefinitions.filter((def: any) =>
+        def.group === groupName && def.title !== '__GROUP_PLACEHOLDER__'
+      );
 
-      setMetafieldValues(prev => {
-        const newValues = { ...prev };
-        fieldsInGroup.forEach((field: any) => {
-          delete newValues[field.title];
-        });
-        return newValues;
+      const newValues: Record<string, any> = {};
+      fieldsInGroup.forEach((field: any) => {
+        newValues[field.title] = field.value || '';
       });
+      setMetafieldValues(newValues);
     }
     setHasChanges(true);
   };
 
-  const updateMetafieldValue = async (fieldTitle: string, value: any) => {
-    if (!product?.id || !currentStore?.id) return;
 
-    try {
-      // Find existing value or create new
-      const existingField = productMetafieldsData?.metafields?.find((f: any) => f && f.title === fieldTitle);
-
-      if (existingField) {
-        await db.transact(
-          db.tx.metafields[existingField.id].update({ value: value.toString() })
-        );
-      } else {
-        const valueId = id();
-        await db.transact(
-          db.tx.metafields[valueId].update({
-            title: fieldTitle,
-            value: value.toString(),
-            storeId: currentStore.id,
-            parentid: product.id
-          })
-        );
-      }
-
-      setMetafieldValues(prev => ({ ...prev, [fieldTitle]: value }));
-    } catch (error) {
-      console.error('Failed to update metafield value:', error);
-      Alert.alert('Error', 'Failed to update metafield value');
-    }
-  };
 
   const handleMediaChange = useCallback((media: MediaItem[]) => {
     setImageError(false); // Reset image error when media changes
@@ -744,6 +713,33 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (formData.relproducts) productData.relproducts = formData.relproducts;
       if (formData.sellproducts) productData.sellproducts = formData.sellproducts;
 
+      // Handle metafield values - save directly to product's metafields field
+      const metafieldData: Record<string, any> = {};
+      if (selectedMetafieldGroup) {
+        const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
+        const fieldsFromSelectedGroup = metafieldDefinitions.filter((def: any) =>
+          def.group === selectedMetafieldGroup &&
+          def.title !== '__GROUP_PLACEHOLDER__'
+        );
+
+        // Build metafield data object
+        fieldsFromSelectedGroup.forEach((field: any) => {
+          const value = metafieldValues[field.title] || '';
+          if (value) {
+            metafieldData[field.title] = {
+              value: value.toString(),
+              type: field.type,
+              group: field.group
+            };
+          }
+        });
+      }
+
+      // Add metafields to product data
+      if (Object.keys(metafieldData).length > 0) {
+        productData.metafields = metafieldData;
+      }
+
       let productId: string;
 
       if (isEditing) {
@@ -760,37 +756,6 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       } else if (isEditing && productCollection?.id) {
         // If editing and collection was removed, unlink it
         await db.transact(db.tx.products[productId].unlink({ collection: productCollection.id }));
-      }
-
-      // Handle metafield values
-      if (selectedMetafieldGroups.length > 0) {
-        const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
-        const fieldsFromSelectedGroups = metafieldDefinitions.filter((def: any) =>
-          selectedMetafieldGroups.includes(def.group)
-        );
-
-        const metafieldPromises = fieldsFromSelectedGroups.map(async (field: any) => {
-          const value = metafieldValues[field.title] || '';
-          const existingField = productMetafieldsData?.metafields?.find((f: any) => f && f.title === field.title);
-
-          if (existingField) {
-            return db.transact(
-              db.tx.metafields[existingField.id].update({ value: value.toString() })
-            );
-          } else {
-            const valueId = id();
-            return db.transact(
-              db.tx.metafields[valueId].update({
-                title: field.title,
-                value: value.toString(),
-                storeId: currentStore.id,
-                parentid: productId
-              })
-            );
-          }
-        });
-
-        await Promise.all(metafieldPromises);
       }
 
       log.info(`Product saved successfully: ${productId}`, 'ProductForm');
@@ -1072,24 +1037,25 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               >
                 <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Metafields</Text>
                 <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-                  {selectedMetafieldGroups.length > 0 ? `${selectedMetafieldGroups.length} group${selectedMetafieldGroups.length !== 1 ? 's' : ''} selected` : 'Select metafield groups'}
+                  {selectedMetafieldGroup ? `${selectedMetafieldGroup} selected` : 'Select metafield group'}
                 </Text>
               </TouchableOpacity>
 
               {/* Selected Metafields List */}
-              {selectedMetafieldGroups.length > 0 && (() => {
+              {selectedMetafieldGroup && (() => {
                 const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
 
-                // Get all fields from selected groups
-                const fieldsFromSelectedGroups = metafieldDefinitions.filter((def: any) =>
-                  selectedMetafieldGroups.includes(def.group)
+                // Get all fields from selected group, excluding placeholders
+                const fieldsFromSelectedGroup = metafieldDefinitions.filter((def: any) =>
+                  def.group === selectedMetafieldGroup &&
+                  def.title !== '__GROUP_PLACEHOLDER__'
                 );
 
-                return fieldsFromSelectedGroups.map((metafield: any) => {
+                return fieldsFromSelectedGroup.map((metafield: any, index: number) => {
                   const currentValue = metafieldValues[metafield.title] || metafield.value || '';
 
                   return (
-                    <View key={metafield.title} style={{
+                    <View key={`${metafield.title}-${index}`} style={{
                       backgroundColor: '#fff',
                       borderBottomWidth: 1,
                       borderBottomColor: '#E5E7EB',
@@ -1122,11 +1088,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                           setMetafieldValues(prev => ({ ...prev, [metafield.title]: value }));
                           setHasChanges(true);
                         }}
-                        onBlur={() => {
-                          if (product?.id) {
-                            updateMetafieldValue(metafield.title, currentValue);
-                          }
-                        }}
+
                         placeholder="value"
                         placeholderTextColor="#9CA3AF"
                         multiline={false}
@@ -2612,12 +2574,18 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 );
               }
 
-              // Get unique groups
-              const groups = [...new Set(metafieldDefinitions.map((def: any) => def.group))].sort();
+              // Get unique groups, excluding placeholders
+              const groups = [...new Set(
+                metafieldDefinitions
+                  .filter((def: any) => def.title !== '__GROUP_PLACEHOLDER__')
+                  .map((def: any) => def.group)
+              )].sort();
 
               return groups.map((groupName: string) => {
-                const isSelected = selectedMetafieldGroups.includes(groupName);
-                const fieldsInGroup = metafieldDefinitions.filter((def: any) => def.group === groupName);
+                const isSelected = selectedMetafieldGroup === groupName;
+                const fieldsInGroup = metafieldDefinitions.filter((def: any) =>
+                  def.group === groupName && def.title !== '__GROUP_PLACEHOLDER__'
+                );
 
                 return (
                   <TouchableOpacity
@@ -2631,7 +2599,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                       borderBottomWidth: 1,
                       borderBottomColor: '#F3F4F6',
                     }}
-                    onPress={() => handleMetafieldGroupSelection(groupName, !isSelected)}
+                    onPress={() => handleMetafieldGroupSelection(groupName)}
                   >
                     <View style={{
                       width: 20,
