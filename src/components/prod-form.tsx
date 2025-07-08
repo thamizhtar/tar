@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated, ScrollView, Keyboard, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated, ScrollView, Keyboard, Platform, KeyboardAvoidingView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { id } from '@instantdb/react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
 
 import Input from './ui/Input';
 import QuantitySelector from './ui/qty';
@@ -154,6 +155,16 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
   const [showItemsFilter, setShowItemsFilter] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+
+  // TipTap editor bridge
+  const editor = useEditorBridge({
+    autofocus: false,
+    avoidIosKeyboard: true,
+    initialContent: formData.notes || '<p>Add product description...</p>',
+    onChange: (content) => {
+      updateField('notes', content);
+    },
+  });
 
 
 
@@ -1689,7 +1700,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         </View>
       </Modal>
 
-      {/* Full-Screen Notes Editor - Shopify Style */}
+      {/* Full-Screen Notes Editor - TipTap with Shopify Style */}
       <Modal
         visible={showFullScreenNotesEditor}
         animationType="slide"
@@ -1742,31 +1753,44 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 fontWeight: '600',
                 color: '#007AFF',
               }}>
-                Save
+                Done
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Notes Editor - Full Screen */}
+          {/* TipTap Rich Text Editor */}
           <View style={{ flex: 1 }}>
-            <TextInput
+            <RichText
+              editor={editor}
               style={{
                 flex: 1,
                 backgroundColor: '#fff',
                 paddingHorizontal: 16,
                 paddingTop: 16,
-                fontSize: 16,
-                color: '#111827',
-                textAlignVertical: 'top',
               }}
-              value={formData.notes}
-              onChangeText={(value) => updateField('notes', value)}
-              placeholder="Add product description..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              autoFocus={false}
             />
           </View>
+
+          {/* Shopify-style Toolbar attached to keyboard */}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{
+              position: 'absolute',
+              width: '100%',
+              bottom: 0,
+            }}
+          >
+            <Toolbar
+              editor={editor}
+              style={{
+                backgroundColor: '#fff',
+                borderTopWidth: 0.5,
+                borderTopColor: '#E1E1E1',
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+              }}
+            />
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
