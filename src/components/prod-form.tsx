@@ -38,6 +38,8 @@ import { r2Service } from '../lib/r2-service';
 import VendorSelect from './vendor-select';
 import BrandSelect from './brand-select';
 import CollectionSelect from './collection-select';
+import TagSelect from './tag-select';
+import Metafields from './metafields';
 import { log, trackError, PerformanceMonitor } from '../lib/logger';
 import ErrorBoundary from './ui/error-boundary';
 
@@ -110,7 +112,17 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     pos: product?.pos ?? false,
     website: product?.website ?? false,
     seo: product?.seo || null,
-    tags: product?.tags || '',
+    tags: (() => {
+      // Handle tags conversion from database format (string) to UI format (array)
+      if (typeof product?.tags === 'string') {
+        try {
+          return JSON.parse(product.tags);
+        } catch {
+          return product.tags ? [product.tags] : [];
+        }
+      }
+      return Array.isArray(product?.tags) ? product.tags : (product?.tags ? [product.tags] : []);
+    })(),
     cost: product?.cost?.toString() || '',
     qrcode: product?.qrcode || '',
     stock: product?.stock || 0,
@@ -134,6 +146,18 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(productCollection?.id || null);
   const [selectedCollectionName, setSelectedCollectionName] = useState<string | null>(productCollection?.name || null);
+  const [showTagSelect, setShowTagSelect] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>((() => {
+    // Handle tags conversion from database format (string) to UI format (array)
+    if (typeof product?.tags === 'string') {
+      try {
+        return JSON.parse(product.tags);
+      } catch {
+        return product.tags ? [product.tags] : [];
+      }
+    }
+    return Array.isArray(product?.tags) ? product.tags : (product?.tags ? [product.tags] : []);
+  })());
   const [showLabelSkuDrawer, setShowLabelSkuDrawer] = useState(false);
   const [showStatusDrawer, setShowStatusDrawer] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
@@ -150,6 +174,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [selectedOptionSets, setSelectedOptionSets] = useState<string[]>([]);
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [showPrimaryImageActions, setShowPrimaryImageActions] = useState(false);
+  const [showMetafields, setShowMetafields] = useState(false);
 
   // Items search and filter states
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
@@ -239,7 +264,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                         newFormData.type.trim() ||
                         newFormData.category.trim() ||
                         newFormData.price.trim() ||
-                        newFormData.sku.trim();
+                        newFormData.sku.trim() ||
+                        (newFormData.tags && newFormData.tags.length > 0);
       return !!hasContent;
     }
 
@@ -258,7 +284,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       vendor: product.vendor || '',
       brand: product.brand || '',
       cost: product.cost?.toString() || '',
-      tags: product.tags || '',
+      tags: Array.isArray(product.tags) ? product.tags : (product.tags ? [product.tags] : []),
       pos: product.pos ?? false,
       website: product.website ?? false,
       status: product.status ?? true,
@@ -268,6 +294,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     return Object.keys(originalData).some(key => {
       const original = originalData[key as keyof typeof originalData];
       const current = newFormData[key];
+
+      // Special handling for arrays (like tags)
+      if (Array.isArray(original) && Array.isArray(current)) {
+        return JSON.stringify(original.sort()) !== JSON.stringify(current.sort());
+      }
+
       return original !== current;
     });
   };
@@ -566,7 +598,13 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       productData.status = formData.status;
 
       if (formData.seo) productData.seo = formData.seo;
-      if (formData.tags) productData.tags = formData.tags.trim();
+      // Convert tags array to JSON string for database compatibility
+      // The database schema expects a string, but we work with arrays in the UI
+      if (Array.isArray(formData.tags)) {
+        productData.tags = JSON.stringify(formData.tags);
+      } else {
+        productData.tags = JSON.stringify([]);
+      }
       if (formData.cost) productData.cost = parseFloat(formData.cost) || 0;
       if (formData.qrcode) productData.qrcode = formData.qrcode.trim();
       if (formData.stock !== undefined) productData.stock = formData.stock;
@@ -627,7 +665,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
             marginVertical: 0,
             overflow: 'hidden',
           }}>
-            {/* First Row: Image Upload and Label/SKU */}
+            {/* First Row: Image Upload Only */}
             <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: '#E5E7EB' }}>
               {/* Image Upload Tile - Square */}
               <TouchableOpacity
@@ -689,25 +727,21 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 )}
               </TouchableOpacity>
 
-              {/* Label/SKU Tile - Takes remaining space vertically */}
-              <View style={{ flex: 1, height: 120 }}>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: '#fff',
-                    paddingHorizontal: 16,
-                    paddingVertical: 16,
-                    position: 'relative',
-                  }}
-                  onPress={() => setShowLabelSkuDrawer(true)}
-                >
-                  <Text style={{ fontSize: 48, fontWeight: '700', color: '#111827', position: 'absolute', top: 16, left: 16 }}>
-                    P
+              {/* Stock Units and Price - Takes remaining space */}
+              <View style={{ flex: 1, height: 120, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 48, fontWeight: '700', color: '#111827' }}>
+                    {formData.stock || 0}
                   </Text>
-                  <Text style={{ fontSize: 14, color: '#6B7280', position: 'absolute', bottom: 16, right: 16 }}>
-                    SKU
+                  <Text style={{ fontSize: 16, color: '#6B7280', marginTop: 4 }}>
+                    {formData.unit || 'units'}
                   </Text>
-                </TouchableOpacity>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 24, fontWeight: '600', color: '#111827' }}>
+                    {parseFloat(formData.saleprice || '0').toFixed(2)} $
+                  </Text>
+                </View>
               </View>
             </View>
 
@@ -749,27 +783,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               />
             </View>
 
-            {/* Units and Price Display */}
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'baseline',
-              paddingVertical: 24,
-              paddingHorizontal: 16,
-              borderBottomWidth: 1,
-              borderColor: '#E5E7EB',
-              backgroundColor: '#fff'
-            }}>
-              <Text style={{ fontSize: 48, fontWeight: '700', color: '#111827' }}>
-                {formData.stock || 0}
-              </Text>
-              <Text style={{ fontSize: 16, color: '#6B7280', marginLeft: 8 }}>
-                {formData.unit || 'units'}
-              </Text>
-              <View style={{ flex: 1 }} />
-              <Text style={{ fontSize: 24, fontWeight: '600', color: '#111827' }}>
-                {parseFloat(formData.saleprice || '0').toFixed(2)} $
-              </Text>
-            </View>
+
 
             {/* Notes and Options Row */}
             <View style={{
@@ -891,10 +905,11 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   paddingHorizontal: 16,
                   borderTopWidth: 0,
                 }}
+                onPress={() => setShowMetafields(true)}
               >
                 <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Metafields</Text>
                 <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-                  Select metafields
+                  Manage metafield sets
                 </Text>
               </TouchableOpacity>
             </View>
@@ -994,6 +1009,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Collection</Text>
                 <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
                   {selectedCollectionName || 'Select collection'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                  paddingVertical: 16,
+                  paddingHorizontal: 16,
+                }}
+                onPress={() => setShowTagSelect(true)}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Tags</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                  {selectedTags.length > 0 ? `${selectedTags.length} tag${selectedTags.length !== 1 ? 's' : ''} selected` : 'Select tags'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1107,15 +1138,15 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 {/* Fixed View Selection Bar */}
                 <View style={{
                   paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  backgroundColor: '#F9FAFB',
+                  paddingVertical: 12,
+                  backgroundColor: '#fff',
                   borderBottomWidth: 1,
                   borderBottomColor: '#E5E7EB',
                 }}>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ gap: 8 }}
+                    contentContainerStyle={{ gap: 12 }}
                   >
                     {[
                       { id: 'stock', label: 'Stock' },
@@ -1128,12 +1159,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                           key={view.id}
                           onPress={() => setSelectedView(view.id as 'stock' | 'pricing' | 'image')}
                           style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 6,
-                            backgroundColor: isSelected ? '#3B82F6' : '#fff',
-                            borderRadius: 16,
-                            borderWidth: 1,
-                            borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
+                            paddingHorizontal: 16,
+                            paddingVertical: 8,
+                            backgroundColor: isSelected ? '#111827' : 'transparent',
                           }}
                         >
                           <Text style={{
@@ -1497,6 +1525,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         visible={showTypeSelect}
         animationType="slide"
         presentationStyle="pageSheet"
+        onRequestClose={() => setShowTypeSelect(false)}
       >
         <TypeSelect
           selectedType={formData.type}
@@ -1513,6 +1542,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         visible={showCategorySelect}
         animationType="slide"
         presentationStyle="pageSheet"
+        onRequestClose={() => setShowCategorySelect(false)}
       >
         <CategorySelect
           selectedCategory={formData.category}
@@ -1529,6 +1559,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         visible={showVendorSelect}
         animationType="slide"
         presentationStyle="pageSheet"
+        onRequestClose={() => setShowVendorSelect(false)}
       >
         <VendorSelect
           selectedVendor={formData.vendor}
@@ -1545,6 +1576,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         visible={showBrandSelect}
         animationType="slide"
         presentationStyle="pageSheet"
+        onRequestClose={() => setShowBrandSelect(false)}
       >
         <BrandSelect
           selectedBrand={formData.brand}
@@ -1561,6 +1593,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         visible={showCollectionSelect}
         animationType="slide"
         presentationStyle="pageSheet"
+        onRequestClose={() => setShowCollectionSelect(false)}
       >
         <CollectionSelect
           selectedCollection={selectedCollectionId}
@@ -1573,7 +1606,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         />
       </Modal>
 
-
+      {/* Tag Select Modal */}
+      <Modal
+        visible={showTagSelect}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowTagSelect(false)}
+      >
+        <TagSelect
+          selectedTags={selectedTags}
+          onSelect={(tags) => {
+            setSelectedTags(tags);
+            updateField('tags', tags);
+          }}
+          onClose={() => setShowTagSelect(false)}
+        />
+      </Modal>
 
       {/* Label/SKU Bottom Drawer */}
       <Modal
@@ -2253,6 +2301,17 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         </View>
       </Modal>
 
+      {/* Metafields Modal */}
+      <Modal
+        visible={showMetafields}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowMetafields(false)}
+      >
+        <Metafields
+          onClose={() => setShowMetafields(false)}
+        />
+      </Modal>
 
     </View>
   );

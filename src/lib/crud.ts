@@ -27,7 +27,7 @@ export interface CreateProductData {
   pos?: boolean;
   website?: boolean;
   seo?: any;
-  tags?: string;
+  tags?: string; // Database expects JSON string
   cost?: number;
   qrcode?: string;
   stock?: number;
@@ -69,7 +69,7 @@ export interface UpdateProductData {
   pos?: boolean;
   website?: boolean;
   seo?: any;
-  tags?: string;
+  tags?: string; // Database expects JSON string
   cost?: number;
   qrcode?: string;
   stock?: number;

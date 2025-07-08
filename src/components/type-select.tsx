@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Alert, FlatList, Modal, Animated } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, TextInput, Alert, FlatList, Modal, Animated, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { id } from '@instantdb/react-native';
@@ -28,6 +28,17 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
   const [editingName, setEditingName] = useState('');
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [onClose]);
 
   // Query types from database using useQuery hook
   const { isLoading, error, data } = db.useQuery(
@@ -176,9 +187,9 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
         alignItems: 'center',
         backgroundColor: '#fff',
         paddingVertical: 16,
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: '#F3F4F6',
       }}
       onPress={() => handleSelectType(item)}
       onLongPress={() => handleLongPress(item)}
@@ -190,7 +201,7 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
         borderWidth: 2,
         borderColor: selectedType === item.name ? '#3B82F6' : '#D1D5DB',
         backgroundColor: selectedType === item.name ? '#3B82F6' : 'transparent',
-        marginRight: 12,
+        marginRight: 16,
         alignItems: 'center',
         justifyContent: 'center',
       }}>
@@ -204,9 +215,10 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
         )}
       </View>
       <Text style={{
-        fontSize: 16,
+        fontSize: 17,
         color: '#111827',
         flex: 1,
+        fontWeight: '400',
       }}>
         {item.name}
       </Text>
@@ -223,16 +235,13 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingVertical: 16,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
       }}>
-        <TouchableOpacity onPress={onClose} style={{ marginRight: 16 }}>
-          <Ionicons name="close" size={24} color="#6B7280" />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
+        <Text style={{ fontSize: 17, fontWeight: '600', color: '#111827' }}>
           Type
         </Text>
       </View>
@@ -240,7 +249,7 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
       {/* Search Bar */}
       <View style={{
         backgroundColor: '#fff',
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',

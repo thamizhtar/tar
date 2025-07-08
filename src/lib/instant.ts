@@ -41,7 +41,7 @@ export type Product = {
   pos?: boolean;
   website?: boolean;
   seo?: any;
-  tags?: string;
+  tags?: string | string[]; // Database stores as string, UI uses array
   cost?: number;
   qrcode?: string;
   stock?: number;

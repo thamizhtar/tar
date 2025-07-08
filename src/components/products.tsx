@@ -152,14 +152,15 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
       const title = product.title || '';
       const category = product.category || '';
       const brand = product.brand || '';
-      const tags = product.tags || '';
+      const tags = product.tags || [];
       const searchTerm = searchQuery.toLowerCase();
 
-      // Search filter
+      // Search filter - handle tags as array
+      const tagsString = Array.isArray(tags) ? tags.join(' ') : (typeof tags === 'string' ? tags : '');
       const matchesSearch = title?.toLowerCase().includes(searchTerm) ||
              category?.toLowerCase().includes(searchTerm) ||
              brand?.toLowerCase().includes(searchTerm) ||
-             tags?.toLowerCase().includes(searchTerm);
+             tagsString?.toLowerCase().includes(searchTerm);
 
       // Status filter
       let matchesStatus = true;

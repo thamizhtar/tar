@@ -155,7 +155,7 @@ const _schema = i.schema({
       stock: i.number().optional(),
       storeId: i.string().indexed(),
       stores: i.any().optional(),
-      tags: i.string().indexed().optional(),
+      tags: i.json().optional(),
       title: i.string().optional(),
       type: i.string().indexed().optional(),
       unit: i.string().optional(),
@@ -187,6 +187,8 @@ const _schema = i.schema({
     tags: i.entity({
       name: i.string().unique().indexed(),
       storeId: i.string().indexed(),
+      createdAt: i.date(),
+      updatedAt: i.date().optional(),
     }),
     types: i.entity({
       name: i.string().unique().indexed(),
@@ -199,16 +201,16 @@ const _schema = i.schema({
     }),
   },
   links: {
-    inventoryStocks: {
+    itemsStocks: {
       forward: {
-        on: "inventory",
+        on: "items",
         has: "many",
         label: "stocks",
       },
       reverse: {
         on: "stocks",
         has: "one",
-        label: "inventory",
+        label: "item",
       },
     },
     productsCollection: {
