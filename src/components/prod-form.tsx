@@ -153,8 +153,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   // Items search and filter states
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
-  const [showItemsFilter, setShowItemsFilter] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedView, setSelectedView] = useState<'stock' | 'pricing' | 'image'>('stock');
+  const [editingItem, setEditingItem] = useState<{id: string, field: string, value: string} | null>(null);
 
 
 
@@ -1004,207 +1006,368 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       label: 'Items',
       icon: <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280' }}>I</Text>,
       content: (
-        <TabContent title="">
-          <View style={{ margin: -16, padding: 0 }}>
-            {(() => {
-              const items = productItemsData?.items || [];
+        <View style={{ flex: 1 }}>
+          {(() => {
+            const items = productItemsData?.items || [];
 
-              // Get all unique option values for filtering
-              const allOptionValues = new Set<string>();
-              items.forEach((item: any) => {
-                if (item.option1) allOptionValues.add(item.option1);
-                if (item.option2) allOptionValues.add(item.option2);
-                if (item.option3) allOptionValues.add(item.option3);
-              });
-              const optionValuesList = Array.from(allOptionValues).sort();
+            // Filter items based on search query and selected filters
+            const filteredItems = items.filter((item: any) => {
+              // Search filter
+              const searchMatch = !itemsSearchQuery ||
+                (item.sku && item.sku.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
+                (item.option1 && item.option1.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
+                (item.option2 && item.option2.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
+                (item.option3 && item.option3.toLowerCase().includes(itemsSearchQuery.toLowerCase()));
 
-              // Filter items based on search query and selected filters
-              const filteredItems = items.filter((item: any) => {
-                // Search filter
-                const searchMatch = !itemsSearchQuery ||
-                  (item.sku && item.sku.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
-                  (item.option1 && item.option1.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
-                  (item.option2 && item.option2.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
-                  (item.option3 && item.option3.toLowerCase().includes(itemsSearchQuery.toLowerCase()));
-
-                // Option value filter
-                const filterMatch = selectedFilters.length === 0 ||
-                  selectedFilters.some(filter =>
-                    item.option1 === filter ||
-                    item.option2 === filter ||
-                    item.option3 === filter
-                  );
-
-                return searchMatch && filterMatch;
-              });
-
-              if (items.length === 0) {
-                return (
-                  <View style={{
-                    flex: 1,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingVertical: 60,
-                    paddingHorizontal: 20
-                  }}>
-                    <MaterialIcons name="inventory-2" size={48} color="#9CA3AF" />
-                    <Text style={{
-                      fontSize: 18,
-                      fontWeight: '600',
-                      color: '#6B7280',
-                      marginTop: 16,
-                      textAlign: 'center'
-                    }}>
-                      No Items Yet
-                    </Text>
-                    <Text style={{
-                      fontSize: 14,
-                      color: '#9CA3AF',
-                      marginTop: 8,
-                      textAlign: 'center',
-                      lineHeight: 20
-                    }}>
-                      Tap the "O" button to select an option set{'\n'}and generate product variants
-                    </Text>
-                  </View>
+              // Option value filter
+              const filterMatch = selectedFilters.length === 0 ||
+                selectedFilters.some(filter =>
+                  item.option1 === filter ||
+                  item.option2 === filter ||
+                  item.option3 === filter
                 );
-              }
 
+              return searchMatch && filterMatch;
+            });
+
+            if (items.length === 0) {
               return (
-                <View>
-                  {/* Search Bar */}
-                  <View style={{
-                    flexDirection: 'row',
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    backgroundColor: '#F9FAFB',
-                    borderBottomWidth: 1,
-                    borderBottomColor: '#E5E7EB',
-                    gap: 8,
+                <View style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  paddingVertical: 60,
+                  paddingHorizontal: 20
+                }}>
+                  <MaterialIcons name="inventory-2" size={48} color="#9CA3AF" />
+                  <Text style={{
+                    fontSize: 18,
+                    fontWeight: '600',
+                    color: '#6B7280',
+                    marginTop: 16,
+                    textAlign: 'center'
                   }}>
-                    <View style={{
-                      flex: 1,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: '#fff',
-                      borderRadius: 8,
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderWidth: 1,
-                      borderColor: '#E5E7EB',
-                    }}>
-                      <MaterialIcons name="search" size={20} color="#9CA3AF" />
-                      <TextInput
-                        style={{
-                          flex: 1,
-                          marginLeft: 8,
-                          fontSize: 16,
-                          color: '#111827',
-                        }}
-                        placeholder="Search items..."
-                        placeholderTextColor="#9CA3AF"
-                        value={itemsSearchQuery}
-                        onChangeText={setItemsSearchQuery}
-                      />
-                    </View>
-
-                    <TouchableOpacity
-                      onPress={() => setShowItemsFilter(true)}
-                      style={{
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                        backgroundColor: selectedFilters.length > 0 ? '#3B82F6' : '#fff',
-                        borderRadius: 8,
-                        borderWidth: 1,
-                        borderColor: selectedFilters.length > 0 ? '#3B82F6' : '#E5E7EB',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <MaterialIcons
-                        name="filter-list"
-                        size={20}
-                        color={selectedFilters.length > 0 ? '#fff' : '#6B7280'}
-                      />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Items List */}
-                  <ScrollView showsVerticalScrollIndicator={false}>
-                    {filteredItems.map((item: any) => (
-                      <View
-                        key={item.id}
-                        style={{
-                          backgroundColor: '#fff',
-                          borderBottomWidth: 1,
-                          borderBottomColor: '#E5E7EB',
-                          paddingVertical: 16,
-                          paddingHorizontal: 16,
-                        }}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
-                              {item.sku || 'No SKU'}
-                            </Text>
-                            {item.option1 && (
-                              <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
-                                {item.option1}
-                                {item.option2 && ` • ${item.option2}`}
-                                {item.option3 && ` • ${item.option3}`}
-                              </Text>
-                            )}
-                            <View style={{ flexDirection: 'row', marginTop: 4 }}>
-                              <Text style={{ fontSize: 12, color: '#9CA3AF' }}>
-                                Stock: {item.onhand || 0}
-                              </Text>
-                              <Text style={{ fontSize: 12, color: '#9CA3AF', marginLeft: 16 }}>
-                                Price: ${(item.price || 0).toFixed(2)}
-                              </Text>
-                            </View>
-                          </View>
-                          <View style={{ alignItems: 'flex-end' }}>
-                            <View style={{
-                              backgroundColor: item.available > 0 ? '#10B981' : '#EF4444',
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 12,
-                            }}>
-                              <Text style={{ fontSize: 12, fontWeight: '500', color: '#fff' }}>
-                                {item.available > 0 ? 'Available' : 'Out of Stock'}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
-
-                    {filteredItems.length === 0 && items.length > 0 && (
-                      <View style={{
-                        flex: 1,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        paddingVertical: 40,
-                        paddingHorizontal: 20
-                      }}>
-                        <MaterialIcons name="search-off" size={48} color="#9CA3AF" />
-                        <Text style={{
-                          fontSize: 16,
-                          fontWeight: '500',
-                          color: '#6B7280',
-                          marginTop: 16,
-                          textAlign: 'center'
-                        }}>
-                          No items match your search
-                        </Text>
-                      </View>
-                    )}
-                  </ScrollView>
+                    No Items Yet
+                  </Text>
+                  <Text style={{
+                    fontSize: 14,
+                    color: '#9CA3AF',
+                    marginTop: 8,
+                    textAlign: 'center',
+                    lineHeight: 20
+                  }}>
+                    Tap the "O" button to select an option set{'\n'}and generate product variants
+                  </Text>
                 </View>
               );
+            }
+
+            return (
+              <View style={{ flex: 1 }}>
+                {/* Fixed Search Bar */}
+                <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                }}>
+                  <TextInput
+                    style={{
+                      flex: 1,
+                      fontSize: 16,
+                      color: '#111827',
+                      paddingVertical: 8,
+                      paddingHorizontal: 0,
+                      borderWidth: 0,
+                      backgroundColor: 'transparent',
+                    }}
+                    placeholder="Search items..."
+                    placeholderTextColor="#9CA3AF"
+                    value={itemsSearchQuery}
+                    onChangeText={setItemsSearchQuery}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowFilters(!showFilters)}
+                    style={{
+                      padding: 8,
+                      marginLeft: 8,
+                    }}
+                  >
+                    <MaterialIcons
+                      name="tune"
+                      size={20}
+                      color={showFilters || selectedFilters.length > 0 ? '#3B82F6' : '#9CA3AF'}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Fixed View Selection Bar */}
+                <View style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  backgroundColor: '#F9FAFB',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8 }}
+                  >
+                    {[
+                      { id: 'stock', label: 'Stock' },
+                      { id: 'pricing', label: 'Pricing' },
+                      { id: 'image', label: 'Image' }
+                    ].map((view) => {
+                      const isSelected = selectedView === view.id;
+                      return (
+                        <TouchableOpacity
+                          key={view.id}
+                          onPress={() => setSelectedView(view.id as 'stock' | 'pricing' | 'image')}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            backgroundColor: isSelected ? '#3B82F6' : '#fff',
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: 14,
+                            color: isSelected ? '#fff' : '#6B7280',
+                            fontWeight: '500',
+                          }}>
+                            {view.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* Fixed Filter Options */}
+                {showFilters && (() => {
+                  const allOptionValues = new Set<string>();
+                  items.forEach((item: any) => {
+                    if (item.option1) allOptionValues.add(item.option1);
+                    if (item.option2) allOptionValues.add(item.option2);
+                    if (item.option3) allOptionValues.add(item.option3);
+                  });
+                  const optionValuesList = Array.from(allOptionValues).sort();
+
+                  if (optionValuesList.length > 0) {
+                    return (
+                      <View style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        backgroundColor: '#F3F4F6',
+                        borderBottomWidth: 1,
+                        borderBottomColor: '#E5E7EB',
+                      }}>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={{ gap: 8 }}
+                        >
+                          {optionValuesList.map((optionValue) => {
+                            const isSelected = selectedFilters.includes(optionValue);
+                            return (
+                              <TouchableOpacity
+                                key={optionValue}
+                                onPress={() => {
+                                  if (isSelected) {
+                                    setSelectedFilters(prev => prev.filter(f => f !== optionValue));
+                                  } else {
+                                    setSelectedFilters(prev => [...prev, optionValue]);
+                                  }
+                                }}
+                                style={{
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 6,
+                                  backgroundColor: isSelected ? '#3B82F6' : '#fff',
+                                  borderRadius: 16,
+                                  borderWidth: 1,
+                                  borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
+                                }}
+                              >
+                                <Text style={{
+                                  fontSize: 14,
+                                  color: isSelected ? '#fff' : '#6B7280',
+                                  fontWeight: '500',
+                                }}>
+                                  {optionValue}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </ScrollView>
+                      </View>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* Scrollable Items List */}
+                <ScrollView
+                  style={{ flex: 1 }}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                  {filteredItems.map((item: any) => (
+                    <View
+                      key={item.id}
+                      style={{
+                        backgroundColor: '#fff',
+                        borderBottomWidth: 1,
+                        borderBottomColor: '#F3F4F6',
+                        paddingVertical: 14,
+                        paddingHorizontal: 16,
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827' }}>
+                            {item.sku || 'No SKU'}
+                          </Text>
+                          {item.option1 && (
+                            <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
+                              {item.option1}
+                              {item.option2 && ` • ${item.option2}`}
+                              {item.option3 && ` • ${item.option3}`}
+                            </Text>
+                          )}
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          {selectedView === 'stock' && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                Alert.prompt(
+                                  'Update Stock',
+                                  'Enter stock quantity:',
+                                  [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                      text: 'Update',
+                                      onPress: (newStock) => {
+                                        if (newStock && !isNaN(Number(newStock))) {
+                                          db.transact(db.tx.items[item.id].update({ onhand: Number(newStock) }));
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  'plain-text',
+                                  String(item.onhand || 0)
+                                );
+                              }}
+                              style={{
+                                backgroundColor: '#F9FAFB',
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 6,
+                                minWidth: 50,
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                                {item.onhand || 0}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                          {selectedView === 'pricing' && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                Alert.prompt(
+                                  'Update Sale Price',
+                                  'Enter sale price:',
+                                  [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                      text: 'Update',
+                                      onPress: (newPrice) => {
+                                        if (newPrice && !isNaN(Number(newPrice))) {
+                                          db.transact(db.tx.items[item.id].update({ saleprice: Number(newPrice) }));
+                                        }
+                                      }
+                                    }
+                                  ],
+                                  'plain-text',
+                                  String(item.saleprice || item.price || 0)
+                                );
+                              }}
+                              style={{
+                                backgroundColor: '#F9FAFB',
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 6,
+                                minWidth: 60,
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                                ${(item.saleprice || item.price || 0).toFixed(2)}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                          {selectedView === 'image' && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                // Handle image selection for item
+                                Alert.alert('Image', 'Item image functionality coming soon');
+                              }}
+                              style={{
+                                width: 40,
+                                height: 40,
+                                backgroundColor: '#F9FAFB',
+                                borderRadius: 6,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              {formData.image ? (
+                                <R2Image
+                                  url={formData.image}
+                                  style={{ width: '100%', height: '100%', borderRadius: 6 }}
+                                  resizeMode="cover"
+                                />
+                              ) : (
+                                <MaterialIcons name="image" size={20} color="#9CA3AF" />
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+
+                  {filteredItems.length === 0 && items.length > 0 && (
+                    <View style={{
+                      flex: 1,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingVertical: 40,
+                      paddingHorizontal: 20
+                    }}>
+                      <MaterialIcons name="search-off" size={48} color="#9CA3AF" />
+                      <Text style={{
+                        fontSize: 16,
+                        fontWeight: '500',
+                        color: '#6B7280',
+                        marginTop: 16,
+                        textAlign: 'center'
+                      }}>
+                        No items match your search
+                      </Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </View>
+            );
             })()}
-          </View>
-        </TabContent>
+        </View>
       ),
     },
   ];
@@ -1221,13 +1384,21 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       {/* Content Area */}
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
         {activeTabData && (
-          <ScrollView
-            style={{ flex: 1 }}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 100 }}
-          >
-            {activeTabData.content}
-          </ScrollView>
+          activeTab === 'items' ? (
+            // Items tab - no outer ScrollView, fixed bars with scrollable content
+            <View style={{ flex: 1 }}>
+              {activeTabData.content}
+            </View>
+          ) : (
+            // Other tabs - use ScrollView as before
+            <ScrollView
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 100 }}
+            >
+              {activeTabData.content}
+            </ScrollView>
+          )
         )}
       </View>
 
@@ -2082,169 +2253,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         </View>
       </Modal>
 
-      {/* Items Filter Full Screen Modal */}
-      <Modal
-        visible={showItemsFilter}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setShowItemsFilter(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
-          {/* Header */}
-          <View style={{
-            paddingTop: insets.top,
-            paddingBottom: 12,
-            paddingHorizontal: 16,
-            backgroundColor: '#fff',
-            borderBottomWidth: 0.5,
-            borderBottomColor: '#E1E1E1',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-            <TouchableOpacity
-              onPress={() => setShowItemsFilter(false)}
-              style={{
-                padding: 8,
-                marginLeft: -8,
-              }}
-            >
-              <MaterialIcons name="arrow-back" size={24} color="#000" />
-            </TouchableOpacity>
 
-            <Text style={{
-              fontSize: 17,
-              fontWeight: '600',
-              color: '#000',
-              flex: 1,
-              textAlign: 'center',
-              marginHorizontal: 16,
-            }}>
-              Filter Items
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => {
-                setSelectedFilters([]);
-                setShowItemsFilter(false);
-              }}
-              style={{
-                padding: 8,
-                marginRight: -8,
-              }}
-            >
-              <Text style={{
-                fontSize: 16,
-                fontWeight: '500',
-                color: '#3B82F6',
-              }}>
-                Clear
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Filter Content */}
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-            {(() => {
-              const items = productItemsData?.items || [];
-              const allOptionValues = new Set<string>();
-              items.forEach((item: any) => {
-                if (item.option1) allOptionValues.add(item.option1);
-                if (item.option2) allOptionValues.add(item.option2);
-                if (item.option3) allOptionValues.add(item.option3);
-              });
-              const optionValuesList = Array.from(allOptionValues).sort();
-
-              if (optionValuesList.length === 0) {
-                return (
-                  <View style={{
-                    flex: 1,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingVertical: 60,
-                  }}>
-                    <MaterialIcons name="filter-list-off" size={48} color="#9CA3AF" />
-                    <Text style={{
-                      fontSize: 16,
-                      fontWeight: '500',
-                      color: '#6B7280',
-                      marginTop: 16,
-                      textAlign: 'center'
-                    }}>
-                      No option values to filter by
-                    </Text>
-                  </View>
-                );
-              }
-
-              return (
-                <View>
-                  <Text style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    color: '#111827',
-                    marginBottom: 16,
-                  }}>
-                    Option Values
-                  </Text>
-
-                  {optionValuesList.map((optionValue) => {
-                    const isSelected = selectedFilters.includes(optionValue);
-                    return (
-                      <TouchableOpacity
-                        key={optionValue}
-                        onPress={() => {
-                          if (isSelected) {
-                            setSelectedFilters(prev => prev.filter(f => f !== optionValue));
-                          } else {
-                            setSelectedFilters(prev => [...prev, optionValue]);
-                          }
-                        }}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          paddingVertical: 16,
-                          paddingHorizontal: 16,
-                          backgroundColor: '#fff',
-                          borderRadius: 8,
-                          marginBottom: 8,
-                          borderWidth: 1,
-                          borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
-                        }}
-                      >
-                        <View style={{
-                          width: 20,
-                          height: 20,
-                          borderRadius: 10,
-                          borderWidth: 2,
-                          borderColor: isSelected ? '#3B82F6' : '#D1D5DB',
-                          backgroundColor: isSelected ? '#3B82F6' : 'transparent',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginRight: 12,
-                        }}>
-                          {isSelected && (
-                            <MaterialIcons name="check" size={12} color="#fff" />
-                          )}
-                        </View>
-
-                        <Text style={{
-                          fontSize: 16,
-                          fontWeight: '500',
-                          color: isSelected ? '#3B82F6' : '#111827',
-                          flex: 1,
-                        }}>
-                          {optionValue}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              );
-            })()}
-          </ScrollView>
-        </View>
-      </Modal>
     </View>
   );
 }
