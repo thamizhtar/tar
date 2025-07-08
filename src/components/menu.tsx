@@ -71,8 +71,8 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
       // Handle store selection/management
       setShowStoreManagement(true);
     } else if (item.id === 'metafields') {
-      // Handle metafields navigation (placeholder for now)
-      console.log('Metafields navigation not implemented yet');
+      // Navigate to metafields management screen
+      onNavigate('metafields' as Screen);
     } else {
       onNavigate(item.id as Screen);
     }

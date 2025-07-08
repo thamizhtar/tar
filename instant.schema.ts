@@ -64,11 +64,12 @@ const _schema = i.schema({
     metafields: i.entity({
       config: i.any().optional(),
       filter: i.boolean().indexed().optional(),
-      group: i.string().optional(),
-      parentid: i.string().indexed(),
-      storeId: i.string().indexed(),
-      title: i.string().optional(),
-      type: i.string().optional(),
+      group: i.string().indexed().optional(), // Index for better group queries
+      order: i.number().optional(),
+      parentid: i.string().indexed(), // Required for linking definitions/values
+      storeId: i.string().indexed(), // Required for store isolation
+      title: i.string(), // Required field
+      type: i.string().indexed().optional(), // Index for filtering by type
       value: i.string().optional(),
     }),
     modifiers: i.entity({
@@ -80,10 +81,10 @@ const _schema = i.schema({
       value: i.number().optional(),
     }),
     options: i.entity({
+      group: i.string().optional(),
       identifier: i.string().optional(),
       order: i.number().optional(),
       set: i.string().optional(),
-      group: i.string().optional(),
       storeId: i.string().indexed(),
       value: i.string().optional(),
     }),
@@ -127,11 +128,11 @@ const _schema = i.schema({
       title: i.string().optional(),
     }),
     products: i.entity({
+      blurb: i.string().optional(),
       brand: i.string().optional(),
       category: i.string().optional(),
       cost: i.number().optional(),
       createdAt: i.date(),
-      excerpt: i.string().optional(),
       featured: i.boolean().optional(),
       image: i.string().optional(),
       medias: i.json().optional(),
@@ -139,26 +140,24 @@ const _schema = i.schema({
       modifiers: i.any().optional(),
       name: i.string().optional(),
       notes: i.string().optional(),
-      options: i.any().optional(),
+      options: i.string().optional(),
       pos: i.boolean().optional(),
       price: i.number().optional(),
       promoinfo: i.any().optional(),
-      status: i.boolean().optional(),
       publishAt: i.date().optional(),
-      qrcode: i.string().optional(),
       relproducts: i.any().optional(),
       saleinfo: i.any().optional(),
       saleprice: i.number().optional(),
       sellproducts: i.any().optional(),
       seo: i.any().optional(),
       sku: i.string().optional(),
+      status: i.boolean().optional(),
       stock: i.number().optional(),
       storeId: i.string().indexed(),
       stores: i.any().optional(),
-      tags: i.json().optional(),
+      tags: i.string().indexed().optional(),
       title: i.string().optional(),
       type: i.string().indexed().optional(),
-      unit: i.string().optional(),
       updatedAt: i.date().optional(),
       vendor: i.string().indexed().optional(),
       website: i.boolean().optional(),
@@ -185,9 +184,9 @@ const _schema = i.schema({
       website: i.string().optional(),
     }),
     tags: i.entity({
+      createdAt: i.date().optional(),
       name: i.string().unique().indexed(),
       storeId: i.string().indexed(),
-      createdAt: i.date(),
       updatedAt: i.date().optional(),
     }),
     types: i.entity({
@@ -201,16 +200,16 @@ const _schema = i.schema({
     }),
   },
   links: {
-    itemsStocks: {
+    inventoryStocks: {
       forward: {
-        on: "items",
+        on: "inventory",
         has: "many",
         label: "stocks",
       },
       reverse: {
         on: "stocks",
         has: "one",
-        label: "item",
+        label: "inventory",
       },
     },
     productsCollection: {
@@ -225,7 +224,7 @@ const _schema = i.schema({
         label: "products",
       },
     },
-    productsInventory: {
+    productsItem: {
       forward: {
         on: "products",
         has: "many",

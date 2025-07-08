@@ -12,6 +12,7 @@ import SalesScreen from "../components/sales";
 import ReportsScreen from "../components/reports";
 import FullScreenMenu from "../components/menu";
 import Options from "../components/options";
+import Metafields from "../components/metafields";
 
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
@@ -21,7 +22,7 @@ import { StoreProvider } from "../lib/store-context";
 import { log, trackError } from "../lib/logger";
 import ErrorBoundary from "../components/ui/error-boundary";
 
-type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'menu' | 'option-create' | 'option-edit';
+type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu' | 'option-create' | 'option-edit';
 
 export default function Page() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
@@ -204,6 +205,10 @@ export default function Page() {
         return <Options
           onClose={() => handleNavigate('dashboard')}
           onOpenMenu={() => handleNavigate('menu')}
+        />;
+      case 'metafields':
+        return <Metafields
+          onClose={() => handleNavigate('menu')}
         />;
 
       case 'menu':
@@ -432,6 +437,8 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
         return { title: 'Collections', icon: '🏷️' };
       case 'options':
         return { title: 'Options', icon: 'O' };
+      case 'metafields':
+        return { title: 'Metafields', icon: '#' };
 
       case 'sales':
         return { title: 'Sales', icon: '💰' };
