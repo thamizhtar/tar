@@ -135,8 +135,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [selectedCollectionName, setSelectedCollectionName] = useState<string | null>(productCollection?.name || null);
   const [showLabelSkuDrawer, setShowLabelSkuDrawer] = useState(false);
   const [showStatusDrawer, setShowStatusDrawer] = useState(false);
-  const [showImageUpload, setShowImageUpload] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
+  const [primaryImageUploading, setPrimaryImageUploading] = useState(false);
+  const [mediasUploading, setMediasUploading] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const [selectedOptionSet, setSelectedOptionSet] = useState<string | null>(null);
@@ -147,6 +148,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showOptionSetSelector, setShowOptionSetSelector] = useState(false);
   const [selectedOptionSets, setSelectedOptionSets] = useState<string[]>([]);
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+  const [showPrimaryImageActions, setShowPrimaryImageActions] = useState(false);
 
   // Items search and filter states
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
@@ -186,7 +188,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   // Rotation animation for loading
   useEffect(() => {
-    if (imageUploading) {
+    if (primaryImageUploading) {
       const rotate = Animated.loop(
         Animated.timing(rotateAnim, {
           toValue: 1,
@@ -199,7 +201,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     } else {
       rotateAnim.setValue(0);
     }
-  }, [imageUploading, rotateAnim]);
+  }, [primaryImageUploading, rotateAnim]);
 
   // Update selectedCollectionId when productCollection changes
   useEffect(() => {
@@ -476,7 +478,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       });
 
       if (!result.canceled && result.assets[0]) {
-        setImageUploading(true);
+        setPrimaryImageUploading(true);
         const asset = result.assets[0];
 
         try {
@@ -497,12 +499,60 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
           console.error('Failed to upload primary image:', error);
           Alert.alert('Error', 'Failed to upload image. Please try again.');
         } finally {
-          setImageUploading(false);
+          setPrimaryImageUploading(false);
         }
       }
     } catch (error) {
       console.error('Failed to pick primary image:', error);
       Alert.alert('Error', 'Failed to select image. Please try again.');
+    }
+  };
+
+  const handleMediasUpload = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'Images' as any,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        setMediasUploading(true);
+
+        try {
+          const newMediaItems = [];
+          for (const asset of result.assets) {
+            const mediaFile = {
+              uri: asset.uri,
+              name: asset.fileName || `media_${Date.now()}.jpg`,
+              type: 'image/jpeg',
+              size: asset.fileSize,
+            };
+
+            const uploadResult = await r2Service.uploadFile(mediaFile, 'products');
+            if (uploadResult.success && uploadResult.url) {
+              newMediaItems.push({
+                url: uploadResult.url,
+                key: uploadResult.key,
+                type: 'image/jpeg',
+              });
+            }
+          }
+
+          if (newMediaItems.length > 0) {
+            const updatedMedias = [...(formData.medias || []), ...newMediaItems];
+            updateField('medias', updatedMedias);
+          }
+        } catch (error) {
+          console.error('Failed to upload medias:', error);
+          Alert.alert('Error', 'Failed to upload images. Please try again.');
+        } finally {
+          setMediasUploading(false);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to pick medias:', error);
+      Alert.alert('Error', 'Failed to select images. Please try again.');
     }
   };
 
@@ -638,7 +688,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 }}
                 onPress={() => setShowFullScreenImageDrawer(true)}
               >
-                {imageUploading ? (
+                {primaryImageUploading ? (
                   <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                     <Animated.View
                       style={{
@@ -1536,249 +1586,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         </TouchableOpacity>
       </Modal>
 
-      {/* Image Upload Bottom Drawer */}
-      <Modal
-        visible={showImageUpload}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowImageUpload(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <TouchableOpacity
-            style={{ flex: 1 }}
-            activeOpacity={1}
-            onPress={() => setShowImageUpload(false)}
-          />
 
-          <View style={{
-            backgroundColor: '#fff',
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
-            paddingTop: 8,
-            paddingBottom: 34,
-            maxHeight: '80%'
-          }}>
-            {/* Handle */}
-            <View style={{
-              width: 36,
-              height: 4,
-              backgroundColor: '#E5E7EB',
-              borderRadius: 2,
-              alignSelf: 'center',
-              marginBottom: 16
-            }} />
-
-            {/* Header */}
-            <View style={{
-              paddingHorizontal: 16,
-              paddingBottom: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: '#F3F4F6'
-            }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827', textAlign: 'center' }}>
-                Add Photo
-              </Text>
-            </View>
-
-            {/* Options */}
-            <View style={{ paddingTop: 8 }}>
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 16,
-                  paddingHorizontal: 16,
-                }}
-                onPress={async () => {
-                  // Take photo
-                  const { status } = await ImagePicker.requestCameraPermissionsAsync();
-                  if (status !== 'granted') {
-                    Alert.alert('Permission Required', 'Please grant camera permissions to take photos.');
-                    return;
-                  }
-
-                  try {
-                    const result = await ImagePicker.launchCameraAsync({
-                      mediaTypes: 'Images' as any,
-                      quality: 0.8,
-                      exif: false,
-                    });
-
-                    if (!result.canceled && result.assets.length > 0) {
-                      setShowImageUpload(false);
-                      setImageUploading(true);
-
-                      try {
-                        // Handle upload
-                        const asset = result.assets[0];
-                        const mediaFile = {
-                          uri: asset.uri,
-                          name: asset.fileName || `image_${Date.now()}.jpg`,
-                          type: 'image/jpeg',
-                          size: asset.fileSize,
-                        };
-
-                        const uploadResult = await r2Service.uploadFile(mediaFile, 'products');
-                        if (uploadResult.success && uploadResult.url) {
-                          // Update image field for Core tab
-                          updateField('image', uploadResult.url);
-
-                          // Also add to media array if we're in Media tab
-                          if (activeTab === 'media') {
-                            const newMediaItem: MediaItem = {
-                              url: uploadResult.url,
-                              key: uploadResult.key,
-                              type: 'image/jpeg',
-                            };
-                            const currentMedia = formData.medias || [];
-                            const newMedia = [...currentMedia, newMediaItem];
-                            updateField('medias', newMedia);
-                          }
-                        } else {
-                          Alert.alert('Upload Failed', uploadResult.error || 'Unknown error occurred');
-                        }
-                      } catch (error) {
-                        Alert.alert('Upload Failed', 'An error occurred during upload');
-                      } finally {
-                        setImageUploading(false);
-                      }
-                    }
-                  } catch (error) {
-                    Alert.alert('Error', 'Failed to take photo');
-                  }
-                }}
-              >
-                <View style={{
-                  width: 40,
-                  height: 40,
-                  backgroundColor: '#F3F4F6',
-                  borderRadius: 20,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 16
-                }}>
-                  <MaterialIcons name="camera-alt" size={20} color="#6B7280" />
-                </View>
-                <Text style={{ fontSize: 16, color: '#111827', fontWeight: '500' }}>
-                  Take Photo
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 16,
-                  paddingHorizontal: 16,
-                }}
-                onPress={async () => {
-                  // Choose from library
-                  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                  if (status !== 'granted') {
-                    Alert.alert('Permission Required', 'Please grant camera roll permissions to upload images.');
-                    return;
-                  }
-
-                  try {
-                    const result = await ImagePicker.launchImageLibraryAsync({
-                      mediaTypes: 'Images' as any,
-                      quality: 0.8,
-                      exif: false,
-                    });
-
-                    if (!result.canceled && result.assets.length > 0) {
-                      setShowImageUpload(false);
-                      setImageUploading(true);
-
-                      try {
-                        // Handle upload
-                        const asset = result.assets[0];
-                        const mediaFile = {
-                          uri: asset.uri,
-                          name: asset.fileName || `image_${Date.now()}.jpg`,
-                          type: 'image/jpeg',
-                          size: asset.fileSize,
-                        };
-
-                        const uploadResult = await r2Service.uploadFile(mediaFile, 'products');
-                        if (uploadResult.success && uploadResult.url) {
-                          // Update image field for Core tab
-                          updateField('image', uploadResult.url);
-
-                          // Also add to media array if we're in Media tab
-                          if (activeTab === 'media') {
-                            const newMediaItem: MediaItem = {
-                              url: uploadResult.url,
-                              key: uploadResult.key,
-                              type: 'image/jpeg',
-                            };
-                            const currentMedia = formData.medias || [];
-                            const newMedia = [...currentMedia, newMediaItem];
-                            updateField('medias', newMedia);
-                          }
-                        } else {
-                          Alert.alert('Upload Failed', uploadResult.error || 'Unknown error occurred');
-                        }
-                      } catch (error) {
-                        Alert.alert('Upload Failed', 'An error occurred during upload');
-                      } finally {
-                        setImageUploading(false);
-                      }
-                    }
-                  } catch (error) {
-                    Alert.alert('Error', 'Failed to pick image');
-                  }
-                }}
-              >
-                <View style={{
-                  width: 40,
-                  height: 40,
-                  backgroundColor: '#F3F4F6',
-                  borderRadius: 20,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 16
-                }}>
-                  <MaterialIcons name="photo-library" size={20} color="#6B7280" />
-                </View>
-                <Text style={{ fontSize: 16, color: '#111827', fontWeight: '500' }}>
-                  Choose from Library
-                </Text>
-              </TouchableOpacity>
-
-              {formData.image && (
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 16,
-                    paddingHorizontal: 16,
-                  }}
-                  onPress={() => {
-                    updateField('image', '');
-                    setShowImageUpload(false);
-                  }}
-                >
-                  <View style={{
-                    width: 40,
-                    height: 40,
-                    backgroundColor: '#FEF2F2',
-                    borderRadius: 20,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 16
-                  }}>
-                    <MaterialIcons name="delete-outline" size={20} color="#EF4444" />
-                  </View>
-                  <Text style={{ fontSize: 16, color: '#EF4444', fontWeight: '500' }}>
-                    Remove Photo
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* Full-Screen Image Drawer */}
       <Modal
@@ -1787,79 +1595,43 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         presentationStyle="fullScreen"
         onRequestClose={() => setShowFullScreenImageDrawer(false)}
       >
-        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
           {/* Header */}
           <View style={{
-            paddingTop: insets.top,
+            paddingTop: insets.top + 16,
             paddingBottom: 16,
-            paddingHorizontal: 20,
+            paddingHorizontal: 24,
             backgroundColor: '#fff',
-            borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
           }}>
-            <TouchableOpacity
-              onPress={() => setShowFullScreenImageDrawer(false)}
-              style={{
-                padding: 8,
-                borderRadius: 8,
-              }}
-            >
-              <MaterialIcons name="close" size={24} color="#6B7280" />
-            </TouchableOpacity>
-
             <Text style={{
               fontSize: 18,
-              fontWeight: '600',
+              fontWeight: '500',
               color: '#111827',
             }}>
-              Product Images
+              Medias
             </Text>
-
-            <View style={{ width: 40 }} />
           </View>
 
           {/* Content */}
           <ScrollView
             style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 20 }}
+            contentContainerStyle={{ padding: 24 }}
             showsVerticalScrollIndicator={false}
           >
             {/* Primary Image Section */}
-            <View style={{
-              backgroundColor: '#fff',
-              borderRadius: 12,
-              padding: 20,
-              marginBottom: 20,
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-            }}>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '600',
-                color: '#111827',
-                marginBottom: 16,
-              }}>
-                Primary Image
-              </Text>
-
+            <View style={{ marginBottom: 24 }}>
               <TouchableOpacity
                 style={{
-                  width: '100%',
-                  height: 200,
-                  backgroundColor: '#F9FAFB',
-                  borderRadius: 8,
-                  borderWidth: 2,
-                  borderColor: '#E5E7EB',
-                  borderStyle: 'dashed',
+                  width: 140,
+                  height: 140,
+                  backgroundColor: formData.image && !imageError ? 'transparent' : '#F8F9FA',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
-                onPress={handlePrimaryImageUpload}
+                onPress={formData.image && !imageError ? () => setShowPrimaryImageActions(true) : handlePrimaryImageUpload}
+                activeOpacity={0.8}
               >
-                {imageUploading ? (
+                {primaryImageUploading ? (
                   <View style={{ alignItems: 'center', justifyContent: 'center' }}>
                     <Animated.View
                       style={{
@@ -1872,22 +1644,19 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                       }}
                     >
                       <View style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        borderWidth: 3,
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 2,
                         borderColor: '#E5E7EB',
-                        borderTopColor: '#9CA3AF',
+                        borderTopColor: '#6B7280',
                       }} />
                     </Animated.View>
-                    <Text style={{ color: '#6B7280', fontSize: 14, marginTop: 8, textAlign: 'center' }}>
-                      Uploading...
-                    </Text>
                   </View>
                 ) : formData.image && !imageError ? (
                   <R2Image
                     url={formData.image}
-                    style={{ width: '100%', height: '100%', borderRadius: 6 }}
+                    style={{ width: 140, height: 140 }}
                     resizeMode="cover"
                     onError={(error) => {
                       setImageError(true);
@@ -1898,35 +1667,14 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   />
                 ) : (
                   <View style={{ alignItems: 'center' }}>
-                    <MaterialIcons name="add-photo-alternate" size={48} color="#9CA3AF" />
-                    <Text style={{ color: '#9CA3AF', fontSize: 16, marginTop: 8, textAlign: 'center' }}>
-                      Tap to add primary image
-                    </Text>
-                    <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4, textAlign: 'center' }}>
-                      This will be the main product image
-                    </Text>
+                    <MaterialIcons name="add" size={20} color="#9CA3AF" />
                   </View>
                 )}
               </TouchableOpacity>
             </View>
 
-            {/* Media System Section */}
-            <View style={{
-              backgroundColor: '#fff',
-              borderRadius: 12,
-              padding: 20,
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-            }}>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '600',
-                color: '#111827',
-                marginBottom: 16,
-              }}>
-                Medias
-              </Text>
-
+            {/* Medias Section */}
+            <View>
               <MediaManager
                 initialMedia={formData.medias}
                 onMediaChange={handleMediaChange}
@@ -1936,11 +1684,73 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 title=""
                 description=""
                 useCustomUpload={true}
-                onCustomUpload={() => setShowImageUpload(true)}
-                customUploading={imageUploading}
+                onCustomUpload={handleMediasUpload}
+                customUploading={mediasUploading}
               />
             </View>
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Primary Image Actions Drawer */}
+      <Modal
+        visible={showPrimaryImageActions}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowPrimaryImageActions(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          backgroundColor: 'rgba(0,0,0,0.3)'
+        }}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setShowPrimaryImageActions(false)}
+          />
+
+          <View style={{ backgroundColor: '#fff' }}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowPrimaryImageActions(false);
+                handlePrimaryImageUpload();
+              }}
+              style={{
+                paddingVertical: 20,
+                paddingHorizontal: 24,
+                borderBottomWidth: 1,
+                borderBottomColor: '#F3F4F6',
+              }}
+            >
+              <Text style={{ fontSize: 16, color: '#111827' }}>Replace</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setShowPrimaryImageActions(false);
+                updateField('image', '');
+              }}
+              style={{
+                paddingVertical: 20,
+                paddingHorizontal: 24,
+                borderBottomWidth: 1,
+                borderBottomColor: '#F3F4F6',
+              }}
+            >
+              <Text style={{ fontSize: 16, color: '#EF4444' }}>Delete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setShowPrimaryImageActions(false)}
+              style={{
+                paddingVertical: 20,
+                paddingHorizontal: 24,
+              }}
+            >
+              <Text style={{ fontSize: 16, color: '#6B7280' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 

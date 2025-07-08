@@ -96,12 +96,22 @@ export default function MediaGallery({
         key={index}
         onPress={() => handleItemPress(item, index)}
         activeOpacity={0.8}
+        style={{ marginRight: 8, marginBottom: 8 }}
       >
-        <View className="aspect-square bg-gray-100 overflow-hidden">
+        <View style={{
+          width: 80,
+          height: 80,
+          backgroundColor: '#F8F9FA',
+          overflow: 'hidden'
+        }}>
           {isVideo ? (
-            <View className="flex-1 items-center justify-center bg-gray-200">
-              <MaterialIcons name="play-circle-outline" size={32} color="#6B7280" />
-              <Text className="text-xs text-gray-500 mt-1">Video</Text>
+            <View style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#F3F4F6'
+            }}>
+              <MaterialIcons name="play-circle-outline" size={24} color="#6B7280" />
             </View>
           ) : (
             <R2Image
@@ -124,22 +134,31 @@ export default function MediaGallery({
     return (
       <TouchableOpacity
         onPress={onUploadPress}
-        className="aspect-square bg-gray-100 items-center justify-center"
+        style={{
+          width: 80,
+          height: 80,
+          backgroundColor: '#F8F9FA',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 8,
+          marginBottom: 8
+        }}
         disabled={uploading}
+        activeOpacity={0.8}
       >
         {uploading ? (
           <Animated.View style={{ transform: [{ rotate: spin }] }}>
             <View style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              borderWidth: 3,
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              borderWidth: 2,
               borderColor: '#E5E7EB',
               borderTopColor: '#9CA3AF',
             }} />
           </Animated.View>
         ) : (
-          <MaterialIcons name="add" size={32} color="#9CA3AF" />
+          <MaterialIcons name="add" size={20} color="#9CA3AF" />
         )}
       </TouchableOpacity>
     );
@@ -152,84 +171,86 @@ export default function MediaGallery({
 
   if (!media || (media.length === 0 && !showUpload)) {
     return (
-      <View className="bg-gray-50 border border-gray-200 p-4 items-center">
-        <MaterialIcons name="photo" size={24} color="#9CA3AF" />
-        <Text className="text-gray-500 text-sm mt-1">No media uploaded</Text>
+      <View style={{
+        backgroundColor: '#F8F9FA',
+        padding: 16,
+        alignItems: 'center'
+      }}>
+        <MaterialIcons name="photo" size={20} color="#9CA3AF" />
+        <Text style={{ color: '#9CA3AF', fontSize: 12, marginTop: 4 }}>No media</Text>
       </View>
     );
   }
 
   return (
-    <View className="space-y-2">
-      {maxItems && media.length > maxItems && (
-        <View className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <Text className="text-amber-800 text-sm">
-            Showing {maxItems} of {media.length} media files
-          </Text>
-        </View>
-      )}
-
+    <View>
       <ScrollView
         horizontal={false}
         showsVerticalScrollIndicator={false}
-        className="max-h-96"
+        style={{ maxHeight: 300 }}
       >
-        <View className="flex-row flex-wrap">
-          {allItems.slice(0, maxItems ? maxItems + (showUpload ? 1 : 0) : undefined).map((item, index) => (
-            <View key={index} className="w-1/3">
-              {item.url === 'upload' ? renderUploadTile() : renderMediaItem(item, index)}
-            </View>
-          ))}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+          {allItems.slice(0, maxItems ? maxItems + (showUpload ? 1 : 0) : undefined).map((item, index) => {
+            if (item.url === 'upload') {
+              return (
+                <View key={`upload-${index}`}>
+                  {renderUploadTile()}
+                </View>
+              );
+            } else {
+              return (
+                <View key={`media-${index}`}>
+                  {renderMediaItem(item, index)}
+                </View>
+              );
+            }
+          })}
         </View>
       </ScrollView>
-      
-      {media.length > 0 && (
-        <View className="pt-2">
-          <Text className="text-sm text-gray-600">
-            {media.length} media file{media.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
-      )}
 
-      {/* Bottom Drawer Modal */}
+      {/* Simple Actions Drawer */}
       <Modal
         visible={showDrawer}
         transparent={true}
         animationType="slide"
         onRequestClose={() => setShowDrawer(false)}
       >
-        <View className="flex-1 justify-end bg-black/50">
-          <View className="bg-white">
-            <View className="p-4 border-b border-gray-200">
-              <Text className="text-lg font-medium text-gray-900">Media Options</Text>
-            </View>
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          backgroundColor: 'rgba(0,0,0,0.3)'
+        }}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
+            onPress={() => setShowDrawer(false)}
+          />
 
-            <View className="p-4 space-y-4">
-              <TouchableOpacity
-                onPress={handleChange}
-                className="flex-row items-center py-3"
-              >
-                <MaterialIcons name="edit" size={24} color="#6B7280" />
-                <Text className="text-base text-gray-900 ml-3">Change</Text>
-              </TouchableOpacity>
+          <View style={{ backgroundColor: '#fff' }}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowDrawer(false);
+                handleRemove();
+              }}
+              style={{
+                paddingVertical: 20,
+                paddingHorizontal: 24,
+                borderBottomWidth: 1,
+                borderBottomColor: '#F3F4F6',
+              }}
+            >
+              <Text style={{ fontSize: 16, color: '#EF4444' }}>Delete</Text>
+            </TouchableOpacity>
 
-              <TouchableOpacity
-                onPress={handleRemove}
-                className="flex-row items-center py-3"
-              >
-                <MaterialIcons name="delete" size={24} color="#EF4444" />
-                <Text className="text-base text-red-600 ml-3">Delete</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View className="p-4 border-t border-gray-200">
-              <TouchableOpacity
-                onPress={() => setShowDrawer(false)}
-                className="py-3 items-center"
-              >
-                <Text className="text-base text-gray-600">Cancel</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={() => setShowDrawer(false)}
+              style={{
+                paddingVertical: 20,
+                paddingHorizontal: 24,
+              }}
+            >
+              <Text style={{ fontSize: 16, color: '#6B7280' }}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
