@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { id } from '@instantdb/react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { RichText, Toolbar, useEditorBridge } from '@10play/tentap-editor';
+
 import Input from './ui/Input';
 import QuantitySelector from './ui/qty';
 
@@ -138,7 +138,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [imageUploading, setImageUploading] = useState(false);
   const [primaryImageUploading, setPrimaryImageUploading] = useState(false);
   const [mediasUploading, setMediasUploading] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const [selectedOptionSet, setSelectedOptionSet] = useState<string | null>(null);
   const [selectedOptionValues, setSelectedOptionValues] = useState<string[]>([]);
@@ -155,36 +155,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showItemsFilter, setShowItemsFilter] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
-  // Initialize 10tap editor - Shopify Style
-  const editor = useEditorBridge({
-    autofocus: false,
-    avoidIosKeyboard: true,
-    initialContent: formData.notes || '',
-    theme: {
-      toolbar: {
-        toolbarBody: {
-          backgroundColor: '#F8F9FA',
-          borderTopWidth: 0.5,
-          borderTopColor: '#E1E1E1',
-          borderBottomWidth: 0,
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          minHeight: 50,
-        },
-      },
-    },
-  });
 
-  // Handle editor content changes
-  useEffect(() => {
-    if (editor) {
-      const unsubscribe = editor._subscribeToEditorStateUpdate(() => {
-        const content = editor.getHTML();
-        updateField('notes', content);
-      });
-      return unsubscribe;
-    }
-  }, [editor]);
 
   // Rotation animation for loading
   useEffect(() => {
@@ -235,29 +206,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     // Only set hasChanges when user actually makes changes via updateField
   }, [selectedCollectionId, productCollection?.id, isEditing]);
 
-  // Handle keyboard events for notes toolbar positioning
-  useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      (e) => {
-        if (showFullScreenNotesEditor) {
-          setKeyboardHeight(e.endCoordinates.height);
-        }
-      }
-    );
 
-    const keyboardDidHideListener = Keyboard.addListener(
-      'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
-      }
-    );
-
-    return () => {
-      keyboardDidShowListener?.remove();
-      keyboardDidHideListener?.remove();
-    };
-  }, [showFullScreenNotesEditor]);
 
   // Handle Android back button
   useEffect(() => {
@@ -770,10 +719,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   backgroundColor: 'transparent',
                 }}
                 value={formData.title}
-                onChangeText={(value) => {
-                  updateField('title', value);
-                  updateField('name', value); // Keep both in sync
-                }}
+                onChangeText={(value) => updateField('title', value)}
                 placeholder="PRODUCT TITLE"
                 placeholderTextColor="#999"
               />
@@ -792,7 +738,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 }}
                 value={formData.excerpt}
                 onChangeText={(value) => updateField('excerpt', value)}
-                placeholder="expert"
+                placeholder="blurb"
                 placeholderTextColor="#9CA3AF"
                 multiline
               />
@@ -1368,18 +1314,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         </TouchableOpacity>
       </View>
 
-      {/* Notes Toolbar - Attached to Keyboard */}
-      {showFullScreenNotesEditor && keyboardHeight > 0 && (
-        <View style={{
-          position: 'absolute',
-          bottom: keyboardHeight,
-          left: 0,
-          right: 0,
-          zIndex: 1000,
-        }}>
-          <Toolbar editor={editor} />
-        </View>
-      )}
+
 
 
 
@@ -1814,14 +1749,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
           {/* Notes Editor - Full Screen */}
           <View style={{ flex: 1 }}>
-            <RichText
-              editor={editor}
+            <TextInput
               style={{
                 flex: 1,
                 backgroundColor: '#fff',
                 paddingHorizontal: 16,
                 paddingTop: 16,
+                fontSize: 16,
+                color: '#111827',
+                textAlignVertical: 'top',
               }}
+              value={formData.notes}
+              onChangeText={(value) => updateField('notes', value)}
+              placeholder="Add product description..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              autoFocus={false}
             />
           </View>
         </View>

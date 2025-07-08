@@ -85,17 +85,7 @@ jest.mock('@expo/vector-icons', () => ({
   AntDesign: 'AntDesign'
 }));
 
-// Mock rich text editor
-jest.mock('@10play/tentap-editor', () => ({
-  RichText: 'RichText',
-  Toolbar: 'Toolbar',
-  useEditorBridge: () => ({
-    setContent: jest.fn(),
-    getHTML: jest.fn(() => ''),
-    focus: jest.fn(),
-    blur: jest.fn()
-  })
-}));
+
 
 // Silence console warnings during tests
 const originalWarn = console.warn;
