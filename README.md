@@ -41,7 +41,6 @@ A modern, React Native-based Point of Sale (POS) system built with Expo, featuri
 - **State Management**: React Context + InstantDB
 - **Testing**: Jest + React Native Testing Library
 - **TypeScript**: Full type safety
-- **Rich Text**: @10play/tentap-editor for notes
 - **Icons**: Expo Vector Icons
 
 ## 🚀 Getting Started

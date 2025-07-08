@@ -24,7 +24,6 @@ TAR POS is a modern Point of Sale (POS) system built with React Native and Expo,
 - **React Native Gesture Handler**: Touch and gesture handling
 
 ### Rich Content & Media
-- **@10play/tentap-editor**: Rich text editor for product descriptions
 - **Expo Image Picker**: Camera and gallery access for product images
 - **React Native Draggable FlatList**: Drag-and-drop functionality
 
