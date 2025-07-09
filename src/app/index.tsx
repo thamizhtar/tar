@@ -7,7 +7,7 @@ import ProductFormScreen from "../components/prod-form";
 import CollectionsScreen from "../components/collections";
 import ProductsManagementScreen from "../components/prod-mgmt";
 import CollectionsManagementScreen from "../components/col-mgmt";
-import DashboardScreen from "../components/dashboard";
+import SpaceScreen from "../components/space";
 import SalesScreen from "../components/sales";
 import ReportsScreen from "../components/reports";
 import FullScreenMenu from "../components/menu";
@@ -22,10 +22,10 @@ import { StoreProvider } from "../lib/store-context";
 import { log, trackError } from "../lib/logger";
 import ErrorBoundary from "../components/ui/error-boundary";
 
-type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu' | 'option-create' | 'option-edit';
+type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu' | 'option-create' | 'option-edit';
 
 export default function Page() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('dashboard');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('space');
   const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>('workspace');
   const [showBottomTabs, setShowBottomTabs] = useState(true); // Start untoggled (bottom tabs shown, square icon not highlighted)
   const [isGridView, setIsGridView] = useState(false); // false = list view (default), true = grid view
@@ -84,22 +84,22 @@ export default function Page() {
         return true;
       }
 
-      // If in menu, go back to dashboard
+      // If in menu, go back to space
       if (currentScreen === 'menu') {
-        setCurrentScreen('dashboard');
+        setCurrentScreen('space');
         return true;
       }
 
-      // If not on dashboard, go to dashboard
-      if (currentScreen !== 'dashboard') {
-        setCurrentScreen('dashboard');
+      // If not on space, go to space
+      if (currentScreen !== 'space') {
+        setCurrentScreen('space');
         setShowBottomTabs(true);
         setActiveBottomTab('workspace');
         setShowManagement(false);
         return true;
       }
 
-      // If on dashboard, allow default back behavior (exit app)
+      // If on space, allow default back behavior (exit app)
       return false;
     };
 
@@ -181,8 +181,8 @@ export default function Page() {
 
     // Otherwise render the main screens (default untoggled state)
     switch (currentScreen) {
-      case 'dashboard':
-        return <DashboardScreen onOpenMenu={() => handleNavigate('menu')} />;
+      case 'space':
+        return <SpaceScreen onOpenMenu={() => handleNavigate('menu')} />;
       case 'sales':
         return <SalesScreen onOpenMenu={() => handleNavigate('menu')} />;
       case 'reports':
@@ -203,7 +203,7 @@ export default function Page() {
         return <CollectionsScreen isGridView={isGridView} />;
       case 'options':
         return <Options
-          onClose={() => handleNavigate('dashboard')}
+          onClose={() => handleNavigate('space')}
           onOpenMenu={() => handleNavigate('menu')}
         />;
       case 'metafields':
@@ -214,10 +214,10 @@ export default function Page() {
       case 'menu':
         return <FullScreenMenu
           onNavigate={handleNavigate}
-          onClose={() => handleNavigate('dashboard')}
+          onClose={() => handleNavigate('space')}
         />;
       default:
-        return <DashboardScreen onOpenMenu={() => handleNavigate('menu')} />;
+        return <SpaceScreen onOpenMenu={() => handleNavigate('menu')} />;
     }
   };
 
@@ -429,8 +429,8 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
     }
 
     switch (screen) {
-      case 'dashboard':
-        return { title: 'Dashboard', icon: '🎈' };
+      case 'space':
+        return { title: 'Space', icon: '🌌' };
       case 'products':
         return { title: 'Products', icon: '📦' };
       case 'collections':

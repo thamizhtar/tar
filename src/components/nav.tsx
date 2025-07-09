@@ -7,7 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 
 export type BottomTab = 'workspace' | 'ai' | 'tasks' | 'people';
-export type MainScreen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections';
+export type MainScreen = 'space' | 'sales' | 'reports' | 'products' | 'collections';
 
 interface BottomNavigationProps {
   activeTab: BottomTab;

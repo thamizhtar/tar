@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, BackHandler } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useStore } from '../lib/store-context';
-import StoreSelector from './store-selector';
 import StoreForm from './store-form';
 import StoreManagement from './store-mgmt';
+import ComList from './comlist';
 
-type Screen = 'dashboard' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'menu';
+type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'menu';
 
 interface FullScreenMenuProps {
   onNavigate: (screen: Screen) => void;
@@ -19,6 +18,21 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
   const { currentStore } = useStore();
   const [showStoreForm, setShowStoreForm] = useState(false);
   const [showStoreManagement, setShowStoreManagement] = useState(false);
+  const [showComList, setShowComList] = useState(false);
+
+  // User status and notification data
+  const userData = {
+    status: 'Work',
+    spaceNotifications: [
+      { type: 'taxi', message: 'Taxi arriving in 10 minutes', time: '10 mins' },
+      { type: 'cab', message: 'Cab booked for 3:30 PM', time: '15 mins' }
+    ],
+    commerceStats: {
+      products: 156,
+      inventory: '89%',
+      reports: 'Updated'
+    }
+  };
 
 
   // Handle Android back button
@@ -42,39 +56,20 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
     return () => backHandler.remove();
   }, [showStoreForm, showStoreManagement, onClose]);
 
-  const cardMenuItems = [
-    // Top row
-    { id: 'dashboard', title: 'Dashboard', position: 'top-left' },
-    { id: 'reports', title: 'Reports', position: 'top-center' },
-    { id: 'sales', title: 'Sales', position: 'top-right' },
 
-    // Middle section
-    { id: 'inventory', title: 'Inventory', position: 'middle-left', hasQR: true },
-    { id: 'store', title: 'Store A', position: 'middle-right', isStore: true },
 
-    // Bottom row
-    { id: 'products', title: 'Products', position: 'bottom-left' },
-    { id: 'collections', title: 'Collections', position: 'bottom-right' },
-  ];
-
-  const additionalMenuItems = [
-    { id: 'options', title: 'Options' },
-    { id: 'metafields', title: 'Metafields' },
-  ];
-
-  const handleItemPress = (item: any) => {
+  const handleItemPress = (itemId: string) => {
     // Handle special cases
-    if (item.id === 'inventory') {
-      // Navigate to products screen for inventory
-      onNavigate('products' as Screen);
-    } else if (item.id === 'store') {
-      // Handle store selection/management
+    if (itemId === 'space') {
+      onNavigate('space' as Screen);
+    } else if (itemId === 'commerce') {
+      onNavigate('sales' as Screen);
+    } else if (itemId === 'comlist') {
+      setShowComList(true);
+    } else if (itemId === 'store') {
       setShowStoreManagement(true);
-    } else if (item.id === 'metafields') {
-      // Navigate to metafields management screen
-      onNavigate('metafields' as Screen);
     } else {
-      onNavigate(item.id as Screen);
+      onNavigate(itemId as Screen);
     }
   };
 
@@ -96,119 +91,106 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
     );
   }
 
+  if (showComList) {
+    return (
+      <ComList
+        onNavigate={onNavigate}
+        onClose={() => setShowComList(false)}
+      />
+    );
+  }
+
   return (
     <View className="flex-1 bg-white">
-      {/* Header */}
-      <View style={{ paddingTop: insets.top }} className="bg-white border-b border-gray-200">
-        <View className="px-4 py-4">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-2xl font-bold text-gray-900">Menu</Text>
-            <TouchableOpacity onPress={onClose} className="px-3 py-2">
-              <Text className="text-lg font-medium text-gray-600">Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-      <ScrollView className="flex-1 bg-white" showsVerticalScrollIndicator={false}>
-        <View className="px-4 pt-8">
-          {/* Main Menu Card - Clean & Aligned */}
-          <View className="bg-white border border-gray-200 rounded-xl mb-6 overflow-hidden">
-            {/* Top Row: Dashboard, Reports, Sales */}
-            <View className="flex-row border-b border-gray-200">
-              <TouchableOpacity
-                onPress={() => handleItemPress({ id: 'dashboard' })}
-                className="flex-1 py-5 border-r border-gray-200 items-center justify-center"
-              >
-                <Text className="text-gray-900 text-base font-medium">Dashboard</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleItemPress({ id: 'reports' })}
-                className="flex-1 py-5 border-r border-gray-200 items-center justify-center"
-              >
-                <Text className="text-gray-900 text-base font-medium">Reports</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleItemPress({ id: 'sales' })}
-                className="flex-1 py-5 items-center justify-center"
-              >
-                <Text className="text-gray-900 text-base font-medium">Sales</Text>
-              </TouchableOpacity>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="px-6" style={{ paddingTop: insets.top + 20 }}>
+          {/* User Status Header */}
+          <View className="mb-6">
+            <View className="flex-row items-center justify-end">
+              <View className="w-3 h-3 bg-green-500 rounded-full mr-3" />
+              <Text className="text-4xl font-light text-gray-900">
+                {userData.status}
+              </Text>
             </View>
+          </View>
 
-            {/* Middle Section: Inventory with QR + Store */}
-            <View className="flex-row border-b border-gray-200">
-              <TouchableOpacity
-                onPress={() => handleItemPress({ id: 'inventory' })}
-                className="flex-1 px-5 py-5 border-r border-gray-200 flex-row items-center justify-between"
-              >
-                <Text className="text-gray-900 text-base font-medium">Inventory</Text>
-                <View className="w-7 h-7 bg-gray-900 rounded items-center justify-center">
-                  <Text className="text-white text-xs font-medium">QR</Text>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowStoreManagement(true)}
-                className="flex-1 px-5 py-5 items-center justify-center"
-              >
-                <Text className="text-blue-600 text-base font-semibold">
-                  {currentStore?.name || 'Store'}
+          {/* Space Card - White */}
+          <TouchableOpacity
+            onPress={() => handleItemPress('space')}
+            className="bg-white rounded-3xl p-6 mb-1"
+            style={{ minHeight: 160 }}
+          >
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1">
+                <Text className="text-black text-2xl font-bold mb-2">Space</Text>
+                <Text className="text-gray-500 text-xl font-bold">
+                  {userData.spaceNotifications.length > 0
+                    ? userData.spaceNotifications[0].message
+                    : 'Taxi arriving in 10 minutes'}
                 </Text>
-              </TouchableOpacity>
+              </View>
+              <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center">
+                <Text className="text-lg">🌌</Text>
+              </View>
             </View>
+          </TouchableOpacity>
 
-            {/* Bottom Row: Products, Collections */}
-            <View className="flex-row">
-              <TouchableOpacity
-                onPress={() => handleItemPress({ id: 'products' })}
-                className="flex-1 py-5 border-r border-gray-200 items-center justify-center"
-              >
-                <Text className="text-gray-900 text-base font-medium">Products</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleItemPress({ id: 'collections' })}
-                className="flex-1 py-5 items-center justify-center"
-              >
-                <Text className="text-gray-900 text-base font-medium">Collections</Text>
-              </TouchableOpacity>
+          {/* Commerce Card - Green */}
+          <TouchableOpacity
+            onPress={() => handleItemPress('commerce')}
+            className="bg-green-500 rounded-3xl p-6"
+            style={{ minHeight: 160 }}
+          >
+            <View className="flex-1">
+              {/* Header */}
+              <View className="mb-4">
+                <Text className="text-black text-2xl font-bold mb-1">Commerce</Text>
+                <TouchableOpacity onPress={() => setShowStoreManagement(true)}>
+                  <Text className="text-green-800 text-sm">
+                    {currentStore?.name || 'Store A'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Bottom row with circles and arrow */}
+              <View className="flex-row items-center justify-between mt-auto">
+                <View className="flex-row">
+                  <TouchableOpacity
+                    onPress={() => handleItemPress('products')}
+                    className="w-12 h-12 bg-yellow-400 rounded-full items-center justify-center mr-3"
+                  >
+                    <Text className="text-black text-xl font-bold">P</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleItemPress('products')}
+                    className="w-12 h-12 bg-purple-400 rounded-full items-center justify-center mr-3"
+                  >
+                    <Text className="text-black text-xl font-bold">I</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleItemPress('reports')}
+                    className="w-12 h-12 bg-blue-400 rounded-full items-center justify-center"
+                  >
+                    <Text className="text-black text-xl font-bold">R</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleItemPress('comlist')}
+                  className="w-12 h-12 bg-black rounded-full items-center justify-center"
+                >
+                  <Text className="text-white text-xl font-bold">→</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </TouchableOpacity>
 
-          {/* Additional Menu Items */}
-          <View className="mb-8">
-            {additionalMenuItems.map((item) => (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => handleItemPress(item)}
-                className="py-4"
-              >
-                <Text className="text-gray-900 text-base font-medium">{item.title}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+
         </View>
       </ScrollView>
 
-      {/* Footer */}
-      <View className="px-4 pt-6 border-t border-gray-200" style={{ paddingBottom: Math.max(24, insets.bottom + 16) }}>
-        <View className="flex-row justify-between items-center">
-          {/* Left side: Profile/Signout and Settings */}
-          <View className="flex-row items-center">
-            <TouchableOpacity className="p-2 mr-4">
-              <Text className="text-2xl">👋</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity className="p-2">
-              <Text className="text-2xl">🎮</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Right side: Agents */}
-          <TouchableOpacity className="p-2">
-            <Text className="text-2xl">🕹️</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
     </View>
   );
 }

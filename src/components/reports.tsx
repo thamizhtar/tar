@@ -2,151 +2,126 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Card from './ui/Card';
-import { formatCurrency } from '../lib/instant';
+import MetricCard from './ui/metric';
+import Button from './ui/Button';
+import SimpleChart from './ui/chart';
+import { db, formatCurrency } from '../lib/instant';
+import { useStore } from '../lib/store-context';
 
 interface ReportsScreenProps {
   onOpenMenu?: () => void;
 }
 
 export default function ReportsScreen({ onOpenMenu }: ReportsScreenProps) {
-  const { top } = useSafeAreaInsets();
+  const { currentStore } = useStore();
 
-  const reportData = {
-    businessName: 'Three Birch Trees',
-    paid: {
-      period: 'Last 30 days',
-      amount: 1900.00
-    },
-    outstanding: {
-      period: 'Invoices',
-      amount: 845.00
-    },
-    pending: {
-      period: 'Estimates',
-      amount: 50.00
-    }
+  // Query products for metrics filtered by current store
+  const { data } = db.useQuery(
+    currentStore?.id ? {
+      products: {
+        $: {
+          where: {
+            storeId: currentStore.id
+          }
+        }
+      },
+      collections: {
+        $: {
+          where: {
+            storeId: currentStore.id
+          }
+        }
+      }
+    } : { products: {}, collections: {} }
+  );
+
+  const products = data?.products || [];
+  const collections = data?.collections || [];
+  const totalProducts = products.length;
+  const totalCollections = collections.length;
+  const totalValue = products.reduce((sum, product) => sum + ((product.price || 0) * (product.stock || 0)), 0);
+  const lowStockProducts = products.filter(product => (product.stock || 0) < 10).length;
+
+  // Sales data for dashboard
+  const salesData = {
+    grossSales: 3158.47
   };
+
+  // Chart data for sales visualization
+  const chartData = [
+    { label: 'Mon', value: 450 },
+    { label: 'Tue', value: 380 },
+    { label: 'Wed', value: 520 },
+    { label: 'Thu', value: 290 },
+    { label: 'Fri', value: 680 },
+    { label: 'Sat', value: 420 },
+    { label: 'Sun', value: 350 }
+  ];
 
   return (
     <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View style={{ paddingTop: top }} className="bg-white border-b border-gray-200">
-        <View className="px-4 py-4">
-          <View className="flex-row items-center justify-between">
-            <View className="items-center flex-1">
-              <View className="w-12 h-12 bg-blue-100 rounded-lg items-center justify-center mb-3">
-                <Text className="text-2xl">📊</Text>
-              </View>
-              <Text className="text-xl font-semibold text-gray-900">Real-time reports</Text>
-            </View>
-            <TouchableOpacity
-              onPress={onOpenMenu}
-              className="w-8 h-8 bg-gray-100 rounded-full items-center justify-center"
-            >
-              <Text className="text-gray-600">☰</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Dashboard Overview Header */}
+        <View className="px-4 pt-6 pb-4 bg-white border-b border-gray-200">
+          <Text className="text-2xl font-bold text-gray-900 mb-1">Dashboard Overview</Text>
+          <Text className="text-sm text-gray-600">Today's performance</Text>
+        </View>
+        {/* Gross Sales Section */}
         <View className="px-4 pt-6">
-          {/* Business Card */}
-          <Card padding="large" className="mb-6 bg-gray-900">
-            <View>
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-lg font-semibold text-white">
-                  Hello,
-                </Text>
-                <TouchableOpacity className="w-8 h-8 bg-blue-600 rounded items-center justify-center">
-                  <Text className="text-white text-xs">?</Text>
-                </TouchableOpacity>
-              </View>
-              <Text className="text-xl font-bold text-white mb-6">
-                {reportData.businessName}
-              </Text>
+          <Text className="text-sm text-gray-600 mb-2">Gross sales</Text>
+          <Text className="text-3xl font-bold text-gray-900 mb-6">
+            {formatCurrency(salesData.grossSales)}
+          </Text>
 
-              {/* Paid Section */}
-              <View className="mb-4">
-                <Text className="text-sm text-gray-300 mb-1">
-                  Paid — {reportData.paid.period}
-                </Text>
-                <Text className="text-3xl font-bold text-white">
-                  {formatCurrency(reportData.paid.amount)}
-                </Text>
-              </View>
-
-              {/* Outstanding Section */}
-              <View className="mb-4">
-                <Text className="text-sm text-gray-300 mb-1">
-                  Outstanding — {reportData.outstanding.period}
-                </Text>
-                <Text className="text-2xl font-bold text-white">
-                  {formatCurrency(reportData.outstanding.amount)}
-                </Text>
-              </View>
-
-              {/* Pending Section */}
-              <View>
-                <Text className="text-sm text-gray-300 mb-1">
-                  Pending — {reportData.pending.period}
-                </Text>
-                <Text className="text-2xl font-bold text-white">
-                  {formatCurrency(reportData.pending.amount)}
-                </Text>
-              </View>
-            </View>
+          {/* Sales Chart */}
+          <Card padding="medium" className="mb-6">
+            <SimpleChart
+              data={chartData}
+              height={120}
+              color="#3B82F6"
+              showLabels={true}
+            />
           </Card>
 
-          {/* Additional Report Cards */}
-          <View className="gap-4 mb-6">
-            <TouchableOpacity>
-              <Card padding="medium">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-gray-900 mb-1">
-                      Sales Summary
-                    </Text>
-                    <Text className="text-sm text-gray-600">
-                      View detailed sales breakdown
-                    </Text>
-                  </View>
-                  <Text className="text-gray-400 text-xl">›</Text>
-                </View>
-              </Card>
-            </TouchableOpacity>
-
-            <TouchableOpacity>
-              <Card padding="medium">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-gray-900 mb-1">
-                      Product Performance
-                    </Text>
-                    <Text className="text-sm text-gray-600">
-                      Top selling products and trends
-                    </Text>
-                  </View>
-                  <Text className="text-gray-400 text-xl">›</Text>
-                </View>
-              </Card>
-            </TouchableOpacity>
-
-            <TouchableOpacity>
-              <Card padding="medium">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-gray-900 mb-1">
-                      Customer Insights
-                    </Text>
-                    <Text className="text-sm text-gray-600">
-                      Customer behavior and analytics
-                    </Text>
-                  </View>
-                  <Text className="text-gray-400 text-xl">›</Text>
-                </View>
-              </Card>
-            </TouchableOpacity>
+          {/* Metrics Grid */}
+          <View className="mb-6">
+            <Text className="text-lg font-semibold text-gray-900 mb-4">Metrics</Text>
+            <View className="flex-row justify-between mb-4">
+              <View className="flex-1 mr-2">
+                <MetricCard
+                  title="Products"
+                  value={totalProducts.toString()}
+                  change={{ value: "Total inventory", type: "neutral" }}
+                  size="small"
+                />
+              </View>
+              <View className="flex-1 ml-2">
+                <MetricCard
+                  title="Collections"
+                  value={totalCollections.toString()}
+                  change={{ value: "Product groups", type: "neutral" }}
+                  size="small"
+                />
+              </View>
+            </View>
+            <View className="flex-row justify-between">
+              <View className="flex-1 mr-2">
+                <MetricCard
+                  title="Inventory Value"
+                  value={formatCurrency(totalValue)}
+                  change={{ value: "Total stock value", type: "neutral" }}
+                  size="small"
+                />
+              </View>
+              <View className="flex-1 ml-2">
+                <MetricCard
+                  title="Low Stock"
+                  value={lowStockProducts.toString()}
+                  change={{ value: "Items < 10 units", type: lowStockProducts > 0 ? "decrease" : "neutral" }}
+                  size="small"
+                />
+              </View>
+            </View>
           </View>
         </View>
       </ScrollView>
