@@ -70,10 +70,13 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   const productCollection = productWithCollection?.products?.[0]?.collection;
 
-  // Query option sets for the current store
+  // Query option sets and values for the current store
   const { data: optionSetsData } = db.useQuery(
     currentStore?.id ? {
-      options: {
+      optionSets: {
+        $: { where: { storeId: currentStore.id } }
+      },
+      optionValues: {
         $: { where: { storeId: currentStore.id } }
       }
     } : {}
@@ -457,17 +460,17 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       // Get options for each selected set and group by their group field
       const optionArrays: any[][] = [];
 
-      for (const setName of optionSetNames.slice(0, 3)) { // Limit to 3 option sets (option1, option2, option3)
-        const setOptions = optionSetsData?.options?.filter(
-          (option: any) => option.set === setName
+      for (const setId of optionSetNames.slice(0, 3)) { // Limit to 3 option sets (option1, option2, option3)
+        const setOptions = optionSetsData?.optionValues?.filter(
+          (option: any) => option.setId === setId
         ) || [];
 
         if (setOptions.length > 0) {
-          // Group options by their group field (Color, Size, etc.)
+          // Group options by their group field (Group 1, Group 2, Group 3)
           const groupMap = new Map<string, any[]>();
 
           setOptions.forEach((option: any) => {
-            const group = option.group || 'default';
+            const group = option.group || 'Group 1';
             if (!groupMap.has(group)) {
               groupMap.set(group, []);
             }
@@ -2252,29 +2255,20 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
             {(() => {
               // Process option sets from data
               const optionSets = React.useMemo(() => {
-                if (!optionSetsData?.options) return [];
+                if (!optionSetsData?.optionSets || !optionSetsData?.optionValues) return [];
 
-                const setMap = new Map<string, { name: string; values: any[] }>();
+                return optionSetsData.optionSets.map((set: any) => {
+                  const values = optionSetsData.optionValues
+                    .filter((value: any) => value.setId === set.id)
+                    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
-                optionSetsData.options.forEach((option: any) => {
-                  if (option.set) {
-                    const existing = setMap.get(option.set);
-                    if (existing) {
-                      existing.values.push(option);
-                    } else {
-                      setMap.set(option.set, {
-                        name: option.set,
-                        values: [option]
-                      });
-                    }
-                  }
+                  return {
+                    id: set.id,
+                    name: set.name,
+                    values: values
+                  };
                 });
-
-                return Array.from(setMap.entries()).map(([setName, data]) => ({
-                  name: setName,
-                  values: data.values.sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
-                }));
-              }, [optionSetsData?.options]);
+              }, [optionSetsData?.optionSets, optionSetsData?.optionValues]);
 
               if (optionSets.length === 0) {
                 return (
@@ -2307,7 +2301,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               }
 
               return optionSets.map((optionSet) => {
-                const isSelected = selectedOptionSets.includes(optionSet.name);
+                const isSelected = selectedOptionSets.includes(optionSet.id);
 
                 return (
                   <TouchableOpacity
@@ -2323,11 +2317,11 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                     onPress={() => {
                       if (isSelected) {
                         // Remove from selection
-                        setSelectedOptionSets(prev => prev.filter(name => name !== optionSet.name));
+                        setSelectedOptionSets(prev => prev.filter(id => id !== optionSet.id));
                       } else {
                         // Add to selection (limit to 3 for option1, option2, option3)
                         if (selectedOptionSets.length < 3) {
-                          setSelectedOptionSets(prev => [...prev, optionSet.name]);
+                          setSelectedOptionSets(prev => [...prev, optionSet.id]);
                         } else {
                           Alert.alert('Limit Reached', 'You can select up to 3 option sets maximum');
                         }
@@ -2351,7 +2345,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                               marginLeft: 8,
                             }}>
                               <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
-                                {selectedOptionSets.indexOf(optionSet.name) + 1}
+                                {selectedOptionSets.indexOf(optionSet.id) + 1}
                               </Text>
                             </View>
                           )}

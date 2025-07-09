@@ -80,13 +80,20 @@ const _schema = i.schema({
       type: i.string().optional(),
       value: i.number().optional(),
     }),
-    options: i.entity({
-      group: i.string().optional(),
-      identifier: i.string().optional(),
-      order: i.number().optional(),
-      set: i.string().optional(),
+    optionSets: i.entity({
+      name: i.string(),
       storeId: i.string().indexed(),
-      value: i.string().optional(),
+    }),
+    optionValues: i.entity({
+      setId: i.string().indexed(),
+      name: i.string(),
+      identifierType: i.string(), // 'text', 'color', 'image'
+      identifierValue: i.string(),
+      group: i.string().optional(), // Group within the option set (Group 1, Group 2, Group 3)
+      order: i.number().optional(),
+      storeId: i.string().indexed(),
+      createdAt: i.date(),
+      updatedAt: i.date(),
     }),
     orderitems: i.entity({
       orderid: i.string().indexed(),

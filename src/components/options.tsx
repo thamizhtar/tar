@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Modal } from 'react-native';
-import OptionsScreen from '../screens/options';
-import SetScreen from '../screens/set-simple';
+import OptionSetsScreen from '../screens/option-sets';
+import OptionSetEditScreen from '../screens/option-set-edit';
 
-type OptionsScreenType = 'list' | 'set';
+type OptionsScreenType = 'list' | 'edit';
 
 interface OptionsState {
   screen: OptionsScreenType;
@@ -21,28 +21,16 @@ export default function Options({ onClose, onOpenMenu }: OptionsProps) {
     screen: 'list',
   });
 
-  const navigateToSet = (setId: string, setName: string) => {
+  const navigateToEdit = (setId: string, setName: string) => {
     setState({
-      screen: 'set',
+      screen: 'edit',
       selectedSetId: setId,
       selectedSetName: setName,
     });
   };
 
-  const handleAddSet = () => {
-    // Navigate to create new option set
-    navigateToSet('new', 'New Option Set');
-  };
-
-
-
   const navigateToList = () => {
     setState({ screen: 'list' });
-  };
-
-  const handleSetSave = () => {
-    // Navigate back to list and refresh
-    navigateToList();
   };
 
   const handleClose = () => {
@@ -54,26 +42,24 @@ export default function Options({ onClose, onOpenMenu }: OptionsProps) {
   return (
     <View style={{ flex: 1 }}>
       {state.screen === 'list' && (
-        <OptionsScreen
-          onNavigateToSet={navigateToSet}
+        <OptionSetsScreen
+          onNavigateToEdit={navigateToEdit}
           onClose={onOpenMenu || handleClose}
-          onAddSet={handleAddSet}
         />
       )}
 
       {/* Full screen modal for edit option set */}
       <Modal
-        visible={state.screen === 'set'}
+        visible={state.screen === 'edit'}
         animationType="slide"
         presentationStyle="fullScreen"
         onRequestClose={navigateToList}
       >
-        {state.screen === 'set' && state.selectedSetId && state.selectedSetName && (
-          <SetScreen
+        {state.screen === 'edit' && state.selectedSetId && state.selectedSetName && (
+          <OptionSetEditScreen
             setId={state.selectedSetId}
             setName={state.selectedSetName}
             onClose={navigateToList}
-            onSave={handleSetSave}
           />
         )}
       </Modal>
