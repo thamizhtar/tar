@@ -3,7 +3,7 @@
 import { i } from "@instantdb/react-native";
 
 const _schema = i.schema({
-  // We inferred 1 attribute!
+  // We inferred 3 attributes!
   // Take a look at this schema, and if everything looks good,
   // run `push schema` again to enforce the types.
   entities: {
@@ -26,13 +26,13 @@ const _schema = i.schema({
     collections: i.entity({
       createdAt: i.date(),
       description: i.string().optional(),
-      image: i.string().optional(), // Primary collection image URL
+      image: i.string().optional(),
       isActive: i.boolean(),
       name: i.string().unique().indexed(),
       parent: i.string().optional(),
-      pos: i.boolean().optional(), // Available in POS
+      pos: i.boolean().optional(),
       sortOrder: i.number().optional(),
-      storefront: i.boolean().optional(), // Available on storefront
+      storefront: i.boolean().optional(),
       storeId: i.string().indexed(),
       updatedAt: i.date(),
     }),
@@ -64,28 +64,16 @@ const _schema = i.schema({
       type: i.string().optional(),
       url: i.string().optional(),
     }),
-    // Metafield Sets - Define custom field types for each category
     metafieldSets: i.entity({
-      name: i.string(), // Field name like "Warranty Period"
-      type: i.string(), // Field type: text, number, boolean, date, etc.
-      category: i.string().indexed(), // products, items, collections, customers, orders, etc.
-      group: i.string().optional(), // Display group for organization
-      order: i.number().optional(), // Display order within group
-      inputConfig: i.json().optional(), // Input conditions, validations, options
+      category: i.string().indexed(),
+      createdAt: i.date(),
+      group: i.string().optional(),
+      inputConfig: i.json().optional(),
+      name: i.string(),
+      order: i.number().optional(),
       required: i.boolean().optional(),
-      description: i.string().optional(),
       storeId: i.string().indexed(),
-      createdAt: i.date(),
-      updatedAt: i.date(),
-    }),
-
-    // Metafield Values - Store actual values for entities
-    metafieldValues: i.entity({
-      setId: i.string().indexed(), // Links to metafieldSets
-      entityId: i.string().indexed(), // ID of the product/item/collection/etc
-      value: i.string(), // The actual value
-      storeId: i.string().indexed(),
-      createdAt: i.date(),
+      type: i.string(),
       updatedAt: i.date(),
     }),
     modifiers: i.entity({
@@ -97,18 +85,20 @@ const _schema = i.schema({
       value: i.number().optional(),
     }),
     optionSets: i.entity({
+      createdAt: i.date().optional(),
       name: i.string(),
       storeId: i.string().indexed(),
+      updatedAt: i.date().optional(),
     }),
     optionValues: i.entity({
-      setId: i.string().indexed(),
-      name: i.string(),
-      identifierType: i.string(), // 'text', 'color', 'image'
-      identifierValue: i.string(),
-      group: i.string().optional(), // Group within the option set (Group 1, Group 2, Group 3)
-      order: i.number().optional(),
-      storeId: i.string().indexed(),
       createdAt: i.date(),
+      group: i.string().optional(),
+      identifierType: i.string(),
+      identifierValue: i.string(),
+      name: i.string(),
+      order: i.number().optional(),
+      setId: i.string().indexed(),
+      storeId: i.string().indexed(),
       updatedAt: i.date(),
     }),
     orderitems: i.entity({
@@ -159,7 +149,7 @@ const _schema = i.schema({
       featured: i.boolean().optional(),
       image: i.string().optional(),
       medias: i.json().optional(),
-      metafields: i.any().optional(),
+      metafields: i.json().optional(),
       modifiers: i.any().optional(),
       name: i.string().optional(),
       notes: i.string().optional(),
@@ -221,10 +211,20 @@ const _schema = i.schema({
       name: i.string().unique().indexed(),
       storeId: i.string().indexed(),
     }),
-
-
   },
   links: {
+    inventoryStocks: {
+      forward: {
+        on: "inventory",
+        has: "many",
+        label: "stocks",
+      },
+      reverse: {
+        on: "stocks",
+        has: "one",
+        label: "inventory",
+      },
+    },
     productsCollection: {
       forward: {
         on: "products",

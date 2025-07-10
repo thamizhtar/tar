@@ -52,7 +52,6 @@ export default function MetafieldDefinitionForm({
   const [formData, setFormData] = useState({
     name: definition?.name || '',
     type: definition?.type || 'single_line_text',
-    description: definition?.description || '',
     required: definition?.required || false,
     inputConfig: definition?.inputConfig || {},
   });
@@ -76,14 +75,265 @@ export default function MetafieldDefinitionForm({
     onSave({
       name: formData.name.trim(),
       type: formData.type as any,
-      description: formData.description,
       required: formData.required,
       inputConfig: formData.inputConfig,
     });
   };
 
+  // Generate default input config based on type
+  const getDefaultInputConfig = (type: string) => {
+    switch (type) {
+      case 'single_line_text':
+        return { placeholder: 'Enter text', maxLength: 255 };
+      case 'multi_line_text':
+        return { placeholder: 'Enter text', maxLength: 65535, rows: 4 };
+      case 'rich_text':
+        return { placeholder: 'Enter formatted text' };
+      case 'number':
+        return { placeholder: 'Enter number', min: 0 };
+      case 'boolean':
+        return {};
+      case 'date':
+        return { placeholder: 'YYYY-MM-DD' };
+      case 'date_time':
+        return { placeholder: 'YYYY-MM-DD HH:MM:SS' };
+      case 'url':
+        return { placeholder: 'https://example.com' };
+      case 'email':
+        return { placeholder: 'user@example.com' };
+      case 'color':
+        return { placeholder: '#000000' };
+      case 'weight':
+        return { placeholder: 'Enter weight', min: 0, unit: 'kg' };
+      case 'dimension':
+        return { placeholder: 'Enter dimension', min: 0, unit: 'cm' };
+      case 'volume':
+        return { placeholder: 'Enter volume', min: 0, unit: 'L' };
+      case 'rating':
+        return { min: 1, max: 5, step: 1 };
+      case 'money':
+        return { placeholder: 'Enter amount', min: 0, currency: 'USD' };
+      case 'single_line_text_list':
+        return { placeholder: 'Enter items separated by commas' };
+      case 'file_reference':
+        return { allowedTypes: ['image/*', 'application/pdf'] };
+      case 'product_reference':
+      case 'variant_reference':
+      case 'page_reference':
+        return {};
+      default:
+        return {};
+    }
+  };
+
   const updateFormData = (key: string, value: any) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+    if (key === 'type') {
+      // When type changes, update inputConfig with defaults
+      const defaultConfig = getDefaultInputConfig(value);
+      setFormData(prev => ({
+        ...prev,
+        [key]: value,
+        inputConfig: defaultConfig
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [key]: value }));
+    }
+  };
+
+  // Render input configuration fields based on selected type
+  const renderInputConfig = () => {
+    const config = formData.inputConfig || {};
+
+    const updateInputConfig = (key: string, value: any) => {
+      setFormData(prev => ({
+        ...prev,
+        inputConfig: { ...prev.inputConfig, [key]: value }
+      }));
+    };
+
+    switch (formData.type) {
+      case 'single_line_text':
+      case 'multi_line_text':
+        return (
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8, color: '#1C1C1E' }}>
+              Configuration
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                fontSize: 16,
+                marginBottom: 12,
+              }}
+              value={config.placeholder || ''}
+              onChangeText={(value) => updateInputConfig('placeholder', value)}
+              placeholder="Placeholder text"
+            />
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                fontSize: 16,
+              }}
+              value={config.maxLength?.toString() || ''}
+              onChangeText={(value) => updateInputConfig('maxLength', parseInt(value) || undefined)}
+              placeholder="Maximum length"
+              keyboardType="numeric"
+            />
+          </View>
+        );
+
+      case 'number':
+      case 'weight':
+      case 'dimension':
+      case 'volume':
+      case 'money':
+        return (
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8, color: '#1C1C1E' }}>
+              Configuration
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                fontSize: 16,
+                marginBottom: 12,
+              }}
+              value={config.placeholder || ''}
+              onChangeText={(value) => updateInputConfig('placeholder', value)}
+              placeholder="Placeholder text"
+            />
+            <View style={{ flexDirection: 'row', gap: 12, marginBottom: 12 }}>
+              <TextInput
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                }}
+                value={config.min?.toString() || ''}
+                onChangeText={(value) => updateInputConfig('min', parseFloat(value) || undefined)}
+                placeholder="Minimum value"
+                keyboardType="numeric"
+              />
+              <TextInput
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                }}
+                value={config.max?.toString() || ''}
+                onChangeText={(value) => updateInputConfig('max', parseFloat(value) || undefined)}
+                placeholder="Maximum value"
+                keyboardType="numeric"
+              />
+            </View>
+            {(formData.type === 'weight' || formData.type === 'dimension' || formData.type === 'volume') && (
+              <TextInput
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                }}
+                value={config.unit || ''}
+                onChangeText={(value) => updateInputConfig('unit', value)}
+                placeholder="Unit (e.g., kg, cm, L)"
+              />
+            )}
+          </View>
+        );
+
+      case 'rating':
+        return (
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8, color: '#1C1C1E' }}>
+              Rating Configuration
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TextInput
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                }}
+                value={config.min?.toString() || '1'}
+                onChangeText={(value) => updateInputConfig('min', parseInt(value) || 1)}
+                placeholder="Min rating"
+                keyboardType="numeric"
+              />
+              <TextInput
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 8,
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  fontSize: 16,
+                }}
+                value={config.max?.toString() || '5'}
+                onChangeText={(value) => updateInputConfig('max', parseInt(value) || 5)}
+                placeholder="Max rating"
+                keyboardType="numeric"
+              />
+            </View>
+          </View>
+        );
+
+      case 'url':
+      case 'email':
+      case 'color':
+      case 'date':
+      case 'date_time':
+        return (
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8, color: '#1C1C1E' }}>
+              Configuration
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 12,
+                fontSize: 16,
+              }}
+              value={config.placeholder || ''}
+              onChangeText={(value) => updateInputConfig('placeholder', value)}
+              placeholder="Placeholder text"
+            />
+          </View>
+        );
+
+      default:
+        return null;
+    }
   };
 
   const canSave = formData.name.trim().length > 0;
@@ -153,30 +403,6 @@ export default function MetafieldDefinitionForm({
           autoFocus={!isEditing}
         />
 
-        {/* Description */}
-        <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8, color: '#1C1C1E' }}>
-          Description (Optional)
-        </Text>
-        <TextInput
-          style={{
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: 8,
-            paddingHorizontal: 12,
-            paddingVertical: 12,
-            fontSize: 16,
-            marginBottom: 20,
-            minHeight: 80,
-          }}
-          value={formData.description}
-          onChangeText={(value) => updateFormData('description', value)}
-          placeholder="Describe what this metafield is for"
-          multiline
-          textAlignVertical="top"
-        />
-
-
-
         {/* Type Selector */}
         <Text style={{ fontSize: 16, fontWeight: '500', marginBottom: 8, color: '#1C1C1E' }}>
           Content type
@@ -218,6 +444,9 @@ export default function MetafieldDefinitionForm({
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Input Configuration */}
+        {renderInputConfig()}
 
         {/* Options */}
         <View style={{ marginBottom: 20 }}>

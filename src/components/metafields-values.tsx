@@ -81,7 +81,6 @@ export default function MetafieldValues({
         order: field.order || 0,
         inputConfig: field.inputConfig || {},
         required: field.required || false,
-        description: field.description || '',
         storeId: field.storeId,
         createdAt: field.createdAt,
         updatedAt: field.updatedAt,

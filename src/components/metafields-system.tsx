@@ -41,7 +41,6 @@ export interface MetafieldSet {
     validations?: any;
   };
   required?: boolean;
-  description?: string;
   storeId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -106,11 +105,6 @@ export default function MetafieldsSystem({
     } : {}
   );
 
-  // Query entity counts
-  const { data: productsData } = db.useQuery(currentStore?.id ? { products: { $: { where: { storeId: currentStore.id } } } } : {});
-  const { data: collectionsData } = db.useQuery(currentStore?.id ? { collections: { $: { where: { storeId: currentStore.id } } } } : {});
-  const { data: ordersData } = db.useQuery(currentStore?.id ? { orders: { $: { where: { storeId: currentStore.id } } } } : {});
-
   // Update entity counts
   useEffect(() => {
     const counts: Record<string, number> = {};
@@ -127,25 +121,11 @@ export default function MetafieldsSystem({
     setEntityCounts(counts);
   }, [metafieldsData]);
 
-  const getEntityCount = (entityType: string) => {
-    switch (entityType) {
-      case 'products':
-        return productsData?.products?.length || 0;
-      case 'collections':
-        return collectionsData?.collections?.length || 0;
-      case 'orders':
-        return ordersData?.orders?.length || 0;
-      default:
-        return 0;
-    }
-  };
-
   const getMetafieldCount = (entityType: string) => {
     return entityCounts[entityType] || 0;
   };
 
   const renderCategoryItem = ({ item }: { item: typeof METAFIELD_CATEGORIES[number] }) => {
-    const entityCount = getEntityCount(item.id);
     const metafieldCount = getMetafieldCount(item.id);
 
     return (
@@ -153,46 +133,29 @@ export default function MetafieldsSystem({
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'space-between',
           paddingVertical: 16,
-          paddingLeft: 20,
-          paddingRight: 12,
+          paddingHorizontal: 20,
           backgroundColor: 'white',
           borderBottomWidth: 1,
           borderBottomColor: '#F2F2F7',
         }}
         onPress={() => setSelectedEntityType(item.id)}
       >
-        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{
-              fontSize: 17,
-              fontWeight: '400',
-              color: '#1C1C1E',
-              marginBottom: 2,
-            }}>
-              {item.name}
-            </Text>
-            <Text style={{
-              fontSize: 13,
-              color: '#8E8E93',
-            }}>
-              {metafieldCount} {metafieldCount === 1 ? 'set' : 'sets'}
-            </Text>
-          </View>
+        <View style={{ flex: 1 }}>
           <Text style={{
             fontSize: 17,
             fontWeight: '400',
-            color: '#8E8E93',
-            marginRight: 8,
+            color: '#1C1C1E',
+            marginBottom: 2,
           }}>
-            {entityCount}
+            {item.name}
           </Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={20}
-            color="#C7C7CC"
-          />
+          <Text style={{
+            fontSize: 13,
+            color: '#8E8E93',
+          }}>
+            {metafieldCount} {metafieldCount === 1 ? 'set' : 'sets'}
+          </Text>
         </View>
       </TouchableOpacity>
     );
@@ -252,35 +215,10 @@ export default function MetafieldsSystem({
             color: '#1C1C1E',
             flex: 1,
           }}>
-            Metafields and metaobjects
+            Metafields
           </Text>
         </View>
       )}
-
-      {/* Description */}
-      <View style={{
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F2F2F7',
-      }}>
-        <Text style={{
-          fontSize: 16,
-          fontWeight: '500',
-          color: '#1C1C1E',
-          marginBottom: 4,
-        }}>
-          Metafield definitions
-        </Text>
-        <Text style={{
-          fontSize: 14,
-          color: '#8E8E93',
-          lineHeight: 20,
-        }}>
-          Add a custom piece of data to a specific part of your store.
-        </Text>
-      </View>
 
       {/* Categories List */}
       <FlatList
