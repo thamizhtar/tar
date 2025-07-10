@@ -186,12 +186,11 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {/* Header - Clean minimal design */}
+    <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
+      {/* Header - Clean minimal design with left-aligned title */}
       <View style={{
-        paddingTop: insets.top,
         paddingHorizontal: 16,
-        paddingBottom: 16,
+        paddingVertical: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
         backgroundColor: '#fff',
@@ -201,14 +200,11 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
-          <TouchableOpacity onPress={handleClose}>
-            <MaterialIcons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-
           <Text style={{
             fontSize: 18,
             fontWeight: '600',
             color: '#111827',
+            flex: 1,
           }}>
             {isEditing ? 'Edit Collection' : 'New Collection'}
           </Text>
@@ -234,8 +230,6 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
               />
             </TouchableOpacity>
           )}
-
-          {!(hasChanges || (!isEditing && formData.name.trim())) && <View style={{ width: 32 }} />}
         </View>
       </View>
 

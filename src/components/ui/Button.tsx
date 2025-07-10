@@ -25,17 +25,17 @@ export default function Button({
   const getVariantStyles = () => {
     switch (variant) {
       case 'primary':
-        return 'bg-blue-600 border-blue-600';
+        return 'bg-blue-600';
       case 'secondary':
-        return 'bg-gray-100 border-gray-200';
+        return 'bg-gray-100';
       case 'outline':
-        return 'bg-transparent border-gray-300';
+        return 'bg-transparent';
       case 'destructive':
-        return 'bg-red-600 border-red-600';
+        return 'bg-red-600';
       case 'success':
-        return 'bg-green-600 border-green-600';
+        return 'bg-green-600';
       default:
-        return 'bg-blue-600 border-blue-600';
+        return 'bg-blue-600';
     }
   };
 
@@ -93,7 +93,7 @@ export default function Button({
         ${getSizeStyles()}
         ${fullWidth ? 'w-full' : ''}
         ${isDisabled ? 'opacity-50' : ''}
-        border rounded-lg flex-row items-center justify-center
+        flex-row items-center justify-center
       `}
     >
       {loading ? (

@@ -120,7 +120,7 @@ export default function BottomNavigation({ activeTab, onTabPress, currentScreen 
 
   return (
     <View
-      className="bg-white border-t border-gray-200"
+      className="bg-white"
       style={{ paddingBottom: insets.bottom }}
     >
       <View className="flex-row">

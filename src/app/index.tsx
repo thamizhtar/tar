@@ -262,7 +262,7 @@ export default function Page() {
     <StoreProvider>
       <ErrorBoundary>
         <View className="flex flex-1">
-          {currentScreen === 'menu' || currentScreen === 'options' || isProductFormOpen || isCollectionFormOpen ? (
+          {currentScreen === 'menu' || currentScreen === 'options' || currentScreen === 'metafields' || isProductFormOpen || isCollectionFormOpen ? (
             // Full screen screens without header or bottom navigation (including product and collection forms)
             <ErrorBoundary>
               {renderMainContent()}

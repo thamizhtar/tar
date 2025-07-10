@@ -6,7 +6,6 @@ interface CardProps {
   className?: string;
   style?: ViewStyle;
   padding?: 'none' | 'small' | 'medium' | 'large';
-  shadow?: boolean;
 }
 
 export default function Card({
@@ -14,7 +13,6 @@ export default function Card({
   className = '',
   style,
   padding = 'medium',
-  shadow = true,
 }: CardProps) {
   const getPaddingStyles = () => {
     switch (padding) {
@@ -33,7 +31,7 @@ export default function Card({
 
   return (
     <View
-      className={`bg-white rounded-xl border border-gray-200 ${getPaddingStyles()} ${className}`}
+      className={`bg-white ${getPaddingStyles()} ${className}`}
       style={style}
     >
       {children}

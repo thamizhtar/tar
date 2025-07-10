@@ -27,9 +27,10 @@ interface MetafieldDefinition {
 interface MetafieldsProps {
   productId?: string;
   onClose?: () => void;
+  showHeader?: boolean; // Control whether to show the main header
 }
 
-export default function Metafields({ productId, onClose }: MetafieldsProps) {
+export default function Metafields({ productId, onClose, showHeader = true }: MetafieldsProps) {
   const insets = useSafeAreaInsets();
   const { currentStore } = useStore();
   const [definitions, setDefinitions] = useState<MetafieldDefinition[]>([]);
@@ -50,6 +51,11 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
   // State for managing groups
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [editingGroupName, setEditingGroupName] = useState<string | null>(null); // Track which group is being edited
+  const [showGroupMenu, setShowGroupMenu] = useState(false);
+  const [selectedGroupForMenu, setSelectedGroupForMenu] = useState<string | null>(null);
+  const [showMetafieldMenu, setShowMetafieldMenu] = useState(false);
+  const [selectedMetafieldForMenu, setSelectedMetafieldForMenu] = useState<MetafieldDefinition | null>(null);
 
 
 
@@ -129,34 +135,76 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
       return;
     }
 
-    // Check if group already exists
+    // Check if group already exists (but allow if we're editing the same group)
     const existingGroups = getAllGroups();
-    if (existingGroups.includes(newGroupName.trim())) {
+    if (existingGroups.includes(newGroupName.trim()) && newGroupName.trim() !== editingGroupName) {
       Alert.alert('Error', 'A group with this name already exists');
       return;
     }
 
     try {
-      // Create a group placeholder metafield to establish the group
-      const groupId = id();
-      await db.transact(
-        db.tx.metafields[groupId].update({
-          title: '__GROUP_PLACEHOLDER__',
-          type: '__GROUP__',
-          group: newGroupName.trim(),
-          order: 0,
-          filter: false,
-          config: {},
-          value: '',
-          storeId: currentStore.id,
-          parentid: 'metafield-definitions'
-        })
-      );
+      if (editingGroupName) {
+        // Rename existing group - update all metafields in this group
+        const groupFields = definitions.filter(def => def.group === editingGroupName);
+        const updateTransactions = groupFields.map(field =>
+          db.tx.metafields[field.id].update({ group: newGroupName.trim() })
+        );
+        await db.transact(...updateTransactions);
+      } else {
+        // Create new group placeholder metafield to establish the group
+        const groupId = id();
+        await db.transact(
+          db.tx.metafields[groupId].update({
+            title: '__GROUP_PLACEHOLDER__',
+            type: '__GROUP__',
+            group: newGroupName.trim(),
+            order: 0,
+            filter: false,
+            config: {},
+            value: '',
+            storeId: currentStore.id,
+            parentid: 'metafield-definitions'
+          })
+        );
+      }
 
       setNewGroupName('');
+      setEditingGroupName(null);
       setShowAddGroupModal(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to add group');
+      Alert.alert('Error', editingGroupName ? 'Failed to rename group' : 'Failed to add group');
+    }
+  };
+
+  const deleteGroup = async (groupName: string) => {
+    if (!currentStore?.id) {
+      Alert.alert('Error', 'No store selected');
+      return;
+    }
+
+    try {
+      // Delete all metafields in this group
+      const groupFields = definitions.filter(def => def.group === groupName);
+      const deleteTransactions = groupFields.map(field =>
+        db.tx.metafields[field.id].delete()
+      );
+
+      await db.transact(...deleteTransactions);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete group');
+    }
+  };
+
+  const deleteMetafield = async (metafieldId: string) => {
+    if (!currentStore?.id) {
+      Alert.alert('Error', 'No store selected');
+      return;
+    }
+
+    try {
+      await db.transact(db.tx.metafields[metafieldId].delete());
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete metafield');
     }
   };
 
@@ -228,7 +276,8 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
   // Get groups for display (all groups, including empty ones)
   const getDisplayGroups = () => {
     const displayGroups = getAllGroups();
-    return displayGroups;
+    // Filter out any "Metafields" group that might be causing the duplicate header
+    return displayGroups.filter(group => group !== 'Metafields');
   };
 
   // Get field type options
@@ -280,58 +329,76 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
     const currentValue = values[item.title] || item.value || '';
 
     return (
-      <TouchableOpacity
+      <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingVertical: 16,
-          paddingHorizontal: 20,
+          paddingLeft: 20,
+          paddingRight: 12,
           backgroundColor: 'white',
           borderBottomWidth: 1,
           borderBottomColor: '#F2F2F7',
         }}
-        onPress={() => {
-          // Handle edit value if productId exists
-          if (productId) {
-            setSelectedField(item);
-            setShowValueModal(true);
-          }
-        }}
       >
-        <View style={{ flex: 1 }}>
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '400',
-            color: '#1C1C1E',
-            marginBottom: 2,
-          }}>
-            {item.title}
-          </Text>
-          <Text style={{
-            fontSize: 13,
-            color: '#8E8E93',
-          }}>
-            {item.group} • {getFieldTypes().find(t => t.value === item.type)?.label || item.type}
-            {item.filter && ' • Filterable'}
-          </Text>
-          {productId && currentValue && (
+        <TouchableOpacity
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+          onPress={() => {
+            // Handle edit value if productId exists
+            if (productId) {
+              setSelectedField(item);
+              setShowValueModal(true);
+            }
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{
+              fontSize: 17,
+              fontWeight: '400',
+              color: '#1C1C1E',
+              marginBottom: 2,
+            }}>
+              {item.title}
+            </Text>
             <Text style={{
               fontSize: 13,
-              color: '#007AFF',
-              marginTop: 2,
+              color: '#8E8E93',
             }}>
-              Value: {currentValue.toString()}
+              {item.group} • {getFieldTypes().find(t => t.value === item.type)?.label || item.type}
+              {item.filter && ' • Filterable'}
             </Text>
-          )}
-        </View>
+            {productId && currentValue && (
+              <Text style={{
+                fontSize: 13,
+                color: '#007AFF',
+                marginTop: 2,
+              }}>
+                Value: {currentValue.toString()}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
 
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={20}
-          color="#C7C7CC"
-        />
-      </TouchableOpacity>
+        {!productId && (
+          <TouchableOpacity
+            style={{
+              padding: 8,
+              marginLeft: 8,
+            }}
+            onPress={() => {
+              setSelectedMetafieldForMenu(item);
+              setShowMetafieldMenu(true);
+            }}
+          >
+            <MaterialCommunityIcons
+              name="dots-vertical"
+              size={20}
+              color="#8E8E93"
+            />
+          </TouchableOpacity>
+        )}
+      </View>
     );
   };
 
@@ -347,83 +414,138 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
     const fieldCount = definitions.filter(def => def.group === item && def.title !== '__GROUP_PLACEHOLDER__').length;
 
     return (
-      <TouchableOpacity
+      <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingVertical: 16,
-          paddingHorizontal: 20,
+          paddingLeft: 20,
+          paddingRight: 12,
           backgroundColor: 'white',
           borderBottomWidth: 1,
           borderBottomColor: '#F2F2F7',
         }}
-        onPress={() => setSelectedGroup(item)}
       >
-        <View style={{ flex: 1 }}>
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '400',
-            color: '#1C1C1E',
-            marginBottom: 2,
-          }}>
-            {item}
-          </Text>
-          <Text style={{
-            fontSize: 13,
-            color: '#8E8E93',
-          }}>
-            {fieldCount} {fieldCount === 1 ? 'field' : 'fields'}
-          </Text>
-        </View>
+        <TouchableOpacity
+          style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+          onPress={() => setSelectedGroup(item)}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{
+              fontSize: 17,
+              fontWeight: '400',
+              color: '#1C1C1E',
+              marginBottom: 2,
+            }}>
+              {item}
+            </Text>
+            <Text style={{
+              fontSize: 13,
+              color: '#8E8E93',
+            }}>
+              {fieldCount} {fieldCount === 1 ? 'field' : 'fields'}
+            </Text>
+          </View>
+        </TouchableOpacity>
 
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={20}
-          color="#C7C7CC"
-        />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={{
+            padding: 8,
+            marginLeft: 8,
+          }}
+          onPress={() => {
+            setSelectedGroupForMenu(item);
+            setShowGroupMenu(true);
+          }}
+        >
+          <MaterialCommunityIcons
+            name="dots-vertical"
+            size={20}
+            color="#8E8E93"
+          />
+        </TouchableOpacity>
+      </View>
     );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
+    <View style={{ flex: 1, backgroundColor: 'white', paddingTop: showHeader ? insets.top : 0 }}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
 
-      {/* Header */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: insets.top + 20,
-        paddingBottom: 20,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E5EA',
-      }}>
-        <TouchableOpacity onPress={showingGroup ? () => setSelectedGroup('') : onClose}>
+      {/* Header - Only show when showHeader is true */}
+      {showHeader && (
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20,
+          paddingVertical: 20,
+          backgroundColor: 'white',
+          borderBottomWidth: 1,
+          borderBottomColor: '#E5E5EA',
+        }}>
           <Text style={{
-            fontSize: 17,
+            fontSize: 18,
             fontWeight: '600',
             color: '#1C1C1E',
+            flex: 1,
           }}>
-            {showingGroup ? selectedGroup : 'Metafields'}
+            {showingGroup ? selectedGroup : '# Metafields'}
           </Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => {
-          if (showingGroup) {
-            // Add metafield to current group
-            setShowAddModal(true);
-          } else {
-            // Add new group
-            setShowAddGroupModal(true);
-          }
+          <TouchableOpacity onPress={() => {
+            if (showingGroup) {
+              // Add metafield to current group
+              setShowAddModal(true);
+            } else {
+              // Add new group
+              setEditingGroupName(null);
+              setNewGroupName('');
+              setShowAddGroupModal(true);
+            }
+          }}>
+            <Feather name="plus" size={24} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Floating Add Button for when header is hidden */}
+      {!showHeader && (
+        <View style={{
+          position: 'absolute',
+          top: insets.top + 20,
+          right: 20,
+          zIndex: 1000,
         }}>
-          <Feather name="plus" size={24} color="#007AFF" />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: '#007AFF',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 5,
+            }}
+            onPress={() => {
+              if (showingGroup) {
+                setShowAddModal(true);
+              } else {
+                setEditingGroupName(null);
+                setNewGroupName('');
+                setShowAddGroupModal(true);
+              }
+            }}
+          >
+            <Feather name="plus" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Content List */}
       {showingGroup ? (
@@ -505,7 +627,12 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
           newGroupName={newGroupName}
           setNewGroupName={setNewGroupName}
           onSave={addGroup}
-          onClose={() => setShowAddGroupModal(false)}
+          onClose={() => {
+            setShowAddGroupModal(false);
+            setEditingGroupName(null);
+            setNewGroupName('');
+          }}
+          isEditing={!!editingGroupName}
         />
       </Modal>
 
@@ -543,64 +670,263 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
           />
         )}
       </Modal>
+
+      {/* Group Menu Bottom Drawer */}
+      <Modal
+        visible={showGroupMenu}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowGroupMenu(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            paddingBottom: insets.bottom,
+          }}>
+            <View style={{
+              paddingVertical: 20,
+              paddingHorizontal: 20,
+              borderBottomWidth: 1,
+              borderBottomColor: '#E5E5EA',
+            }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: '#1C1C1E',
+                textAlign: 'center',
+              }}>
+                {selectedGroupForMenu}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={{
+                paddingVertical: 16,
+                paddingHorizontal: 20,
+                borderBottomWidth: 1,
+                borderBottomColor: '#E5E5EA',
+              }}
+              onPress={() => {
+                setShowGroupMenu(false);
+                if (selectedGroupForMenu) {
+                  setEditingGroupName(selectedGroupForMenu);
+                  setNewGroupName(selectedGroupForMenu);
+                  setShowAddGroupModal(true);
+                }
+              }}
+            >
+              <Text style={{
+                fontSize: 17,
+                color: '#007AFF',
+                textAlign: 'center',
+              }}>
+                Edit
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                paddingVertical: 16,
+                paddingHorizontal: 20,
+              }}
+              onPress={() => {
+                setShowGroupMenu(false);
+                if (selectedGroupForMenu) {
+                  Alert.alert(
+                    'Delete Group',
+                    `Delete "${selectedGroupForMenu}" and all its fields?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: () => deleteGroup(selectedGroupForMenu)
+                      }
+                    ]
+                  );
+                }
+              }}
+            >
+              <Text style={{
+                fontSize: 17,
+                color: '#FF3B30',
+                textAlign: 'center',
+              }}>
+                Delete
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Metafield Menu Bottom Drawer */}
+      <Modal
+        visible={showMetafieldMenu}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowMetafieldMenu(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          backgroundColor: 'rgba(0,0,0,0.5)'
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            paddingBottom: insets.bottom,
+          }}>
+            <View style={{
+              paddingVertical: 20,
+              paddingHorizontal: 20,
+              borderBottomWidth: 1,
+              borderBottomColor: '#E5E5EA',
+            }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: '#1C1C1E',
+                textAlign: 'center',
+              }}>
+                {selectedMetafieldForMenu?.title}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={{
+                paddingVertical: 16,
+                paddingHorizontal: 20,
+                borderBottomWidth: 1,
+                borderBottomColor: '#E5E5EA',
+              }}
+              onPress={() => {
+                setShowMetafieldMenu(false);
+                if (selectedMetafieldForMenu) {
+                  // Pre-fill the form with current data
+                  setNewFieldData({
+                    title: selectedMetafieldForMenu.title,
+                    type: selectedMetafieldForMenu.type,
+                    group: selectedMetafieldForMenu.group,
+                    filter: selectedMetafieldForMenu.filter,
+                    config: selectedMetafieldForMenu.config || {},
+                    value: selectedMetafieldForMenu.value || ''
+                  });
+                  setShowAddModal(true);
+                }
+              }}
+            >
+              <Text style={{
+                fontSize: 17,
+                color: '#007AFF',
+                textAlign: 'center',
+              }}>
+                Edit
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={{
+                paddingVertical: 16,
+                paddingHorizontal: 20,
+              }}
+              onPress={() => {
+                setShowMetafieldMenu(false);
+                if (selectedMetafieldForMenu) {
+                  Alert.alert(
+                    'Delete Metafield',
+                    `Delete "${selectedMetafieldForMenu.title}" metafield?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: () => deleteMetafield(selectedMetafieldForMenu.id)
+                      }
+                    ]
+                  );
+                }
+              }}
+            >
+              <Text style={{
+                fontSize: 17,
+                color: '#FF3B30',
+                textAlign: 'center',
+              }}>
+                Delete
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 // Add Group Screen Component
-function AddGroupScreen({ newGroupName, setNewGroupName, onSave, onClose }: {
+function AddGroupScreen({ newGroupName, setNewGroupName, onSave, onClose, isEditing = false }: {
   newGroupName: string;
   setNewGroupName: (name: string) => void;
   onSave: () => void;
   onClose: () => void;
+  isEditing?: boolean;
 }) {
   const insets = useSafeAreaInsets();
 
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [onClose]);
+
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
+    <View style={{ flex: 1, backgroundColor: 'white', paddingTop: insets.top }}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
 
-      {/* Header */}
+      {/* Header - Clean minimal design with left-aligned title */}
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: insets.top + 20,
-        paddingBottom: 20,
+        paddingVertical: 20,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E5EA',
       }}>
-        <TouchableOpacity onPress={onClose}>
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '400',
-            color: '#007AFF',
-          }}>
-            Cancel
-          </Text>
-        </TouchableOpacity>
-
         <Text style={{
-          fontSize: 17,
+          fontSize: 18,
           fontWeight: '600',
           color: '#1C1C1E',
+          flex: 1,
         }}>
-          Add Group
+          {isEditing ? 'Edit Group' : 'Add Group'}
         </Text>
 
         <TouchableOpacity
           onPress={onSave}
           disabled={!newGroupName.trim()}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: newGroupName.trim() ? '#007AFF' : '#E5E5EA',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '600',
-            color: !newGroupName.trim() ? '#C7C7CC' : '#007AFF',
-          }}>
-            Save
-          </Text>
+          <MaterialCommunityIcons
+            name="check"
+            size={20}
+            color={newGroupName.trim() ? '#fff' : '#C7C7CC'}
+          />
         </TouchableOpacity>
       </View>
 
@@ -639,6 +965,17 @@ function AddMetafieldScreen({ newFieldData, setNewFieldData, onSave, onClose, ge
 }) {
   const insets = useSafeAreaInsets();
 
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [onClose]);
+
   // Predefined groups to avoid typing errors
   const predefinedGroups = [
     'General',
@@ -652,35 +989,25 @@ function AddMetafieldScreen({ newFieldData, setNewFieldData, onSave, onClose, ge
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
+    <View style={{ flex: 1, backgroundColor: 'white', paddingTop: insets.top }}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
 
-      {/* Header */}
+      {/* Header - Clean minimal design with left-aligned title */}
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: insets.top + 20,
-        paddingBottom: 20,
+        paddingVertical: 20,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E5EA',
       }}>
-        <TouchableOpacity onPress={onClose}>
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '400',
-            color: '#007AFF',
-          }}>
-            Cancel
-          </Text>
-        </TouchableOpacity>
-
         <Text style={{
-          fontSize: 17,
+          fontSize: 18,
           fontWeight: '600',
           color: '#1C1C1E',
+          flex: 1,
         }}>
           Add Metafield
         </Text>
@@ -688,14 +1015,20 @@ function AddMetafieldScreen({ newFieldData, setNewFieldData, onSave, onClose, ge
         <TouchableOpacity
           onPress={onSave}
           disabled={!newFieldData.title.trim()}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: newFieldData.title.trim() ? '#007AFF' : '#E5E5EA',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '600',
-            color: !newFieldData.title.trim() ? '#C7C7CC' : '#007AFF',
-          }}>
-            Save
-          </Text>
+          <MaterialCommunityIcons
+            name="check"
+            size={20}
+            color={newFieldData.title.trim() ? '#fff' : '#C7C7CC'}
+          />
         </TouchableOpacity>
       </View>
 
@@ -831,6 +1164,17 @@ function EditValueScreen({ field, currentValue, onSave, onClose, getFieldTypes }
   const insets = useSafeAreaInsets();
   const [value, setValue] = useState(currentValue);
 
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [onClose]);
+
   const handleSave = () => {
     onSave(value);
     onClose();
@@ -907,47 +1251,45 @@ function EditValueScreen({ field, currentValue, onSave, onClose, getFieldTypes }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
+    <View style={{ flex: 1, backgroundColor: 'white', paddingTop: insets.top }}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
 
-      {/* Header */}
+      {/* Header - Clean minimal design with left-aligned title */}
       <View style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: insets.top + 20,
-        paddingBottom: 20,
+        paddingVertical: 20,
         backgroundColor: 'white',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E5EA',
       }}>
-        <TouchableOpacity onPress={onClose}>
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '400',
-            color: '#007AFF',
-          }}>
-            Cancel
-          </Text>
-        </TouchableOpacity>
-
         <Text style={{
-          fontSize: 17,
+          fontSize: 18,
           fontWeight: '600',
           color: '#1C1C1E',
+          flex: 1,
         }}>
           {field.title}
         </Text>
 
-        <TouchableOpacity onPress={handleSave}>
-          <Text style={{
-            fontSize: 17,
-            fontWeight: '600',
-            color: '#007AFF',
-          }}>
-            Save
-          </Text>
+        <TouchableOpacity
+          onPress={handleSave}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: '#007AFF',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <MaterialCommunityIcons
+            name="check"
+            size={20}
+            color="#fff"
+          />
         </TouchableOpacity>
       </View>
 

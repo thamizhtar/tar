@@ -94,49 +94,41 @@ export default function CollectionsScreen({ isGridView = false, onOpenForm }: Co
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {/* Search Bar with Safe Area - Clean minimal design */}
+    <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
+      {/* Clean Search Bar - Adapted from prod-form.tsx */}
       <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         backgroundColor: '#fff',
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
-        paddingTop: insets.top
       }}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: '#F9FAFB',
-            borderWidth: 1,
-            borderColor: '#E5E7EB',
-            borderRadius: 8,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
-          }}>
-            {/* Search Icon */}
-            <Feather name="search" size={20} color="#6B7280" />
-
-            {/* Search Input */}
-            <TextInput
-              placeholder="Search collections"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={{
-                flex: 1,
-                fontSize: 16,
-                color: '#111827',
-                marginLeft: 12,
-                marginRight: 12,
-              }}
-              placeholderTextColor="#9CA3AF"
-            />
-
-            {/* Add Icon */}
-            <TouchableOpacity onPress={handleAdd}>
-              <Feather name="plus" size={20} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <TextInput
+          style={{
+            flex: 1,
+            fontSize: 16,
+            color: '#111827',
+            paddingVertical: 8,
+            paddingHorizontal: 0,
+            borderWidth: 0,
+            backgroundColor: 'transparent',
+          }}
+          placeholder="Search collections"
+          placeholderTextColor="#9CA3AF"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <TouchableOpacity
+          onPress={handleAdd}
+          style={{
+            padding: 8,
+            marginLeft: 8,
+          }}
+        >
+          <Feather name="plus" size={20} color="#6B7280" />
+        </TouchableOpacity>
       </View>
 
       {/* Collections List - Minimal clean design */}
@@ -146,31 +138,31 @@ export default function CollectionsScreen({ isGridView = false, onOpenForm }: Co
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
-            padding: 32
+            padding: 20
           }}>
             <View style={{ alignItems: 'center' }}>
               <View style={{
-                width: 64,
-                height: 64,
-                backgroundColor: '#E5E7EB',
-                borderRadius: 32,
+                width: 48,
+                height: 48,
+                backgroundColor: '#F3F4F6',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: 16,
+                marginBottom: 12,
               }}>
-                <Text style={{ fontSize: 24 }}>📚</Text>
+                <Text style={{ fontSize: 20 }}>📚</Text>
               </View>
               <Text style={{
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: '500',
                 color: '#111827',
-                marginBottom: 8
+                marginBottom: 4
               }}>
                 No collections found
               </Text>
               <Text style={{
                 color: '#6B7280',
-                textAlign: 'center'
+                textAlign: 'center',
+                fontSize: 14
               }}>
                 {searchQuery ? 'Try adjusting your search' : 'Create your first collection to organize products'}
               </Text>
@@ -187,18 +179,15 @@ export default function CollectionsScreen({ isGridView = false, onOpenForm }: Co
                 onPress={() => handleEdit(collection)}
                 style={{
                   backgroundColor: '#fff',
-                  borderBottomWidth: 1,
-                  borderBottomColor: '#F3F4F6',
                   paddingHorizontal: 16,
-                  paddingVertical: 16,
+                  paddingVertical: 12,
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   {/* Collection Image */}
                   <View style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 8,
+                    width: 48,
+                    height: 48,
                     backgroundColor: '#F3F4F6',
                     marginRight: 12,
                     overflow: 'hidden',
@@ -231,36 +220,6 @@ export default function CollectionsScreen({ isGridView = false, onOpenForm }: Co
                       }} numberOfLines={1}>
                         {collection.name}
                       </Text>
-
-                      {/* Status indicators */}
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
-                        {collection.storefront && (
-                          <View style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: '#10B981',
-                            marginRight: 4,
-                          }} />
-                        )}
-                        {collection.pos && (
-                          <View style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: '#3B82F6',
-                            marginRight: 4,
-                          }} />
-                        )}
-                        {!collection.isActive && (
-                          <View style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: '#EF4444',
-                          }} />
-                        )}
-                      </View>
                     </View>
 
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>

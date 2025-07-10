@@ -74,7 +74,7 @@ export default function QuantitySelector({
           ${styles.button}
           ${canDecrease ? 'bg-gray-100' : 'bg-gray-50'}
           ${canDecrease ? '' : 'opacity-50'}
-          rounded-full items-center justify-center border border-gray-200
+          items-center justify-center
         `}
       >
         <Text className={`${styles.text} font-medium text-gray-700`}>
@@ -97,7 +97,7 @@ export default function QuantitySelector({
           ${styles.button}
           ${canIncrease ? 'bg-gray-100' : 'bg-gray-50'}
           ${canIncrease ? '' : 'opacity-50'}
-          rounded-full items-center justify-center border border-gray-200
+          items-center justify-center
         `}
       >
         <Text className={`${styles.text} font-medium text-gray-700`}>

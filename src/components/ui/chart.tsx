@@ -54,7 +54,7 @@ export default function SimpleChart({
           return (
             <View key={index} className="flex-1 items-center">
               <View
-                className="rounded-t-sm mb-2"
+                className="mb-2"
                 style={{
                   backgroundColor: color,
                   height: barHeight,
@@ -128,7 +128,7 @@ export function LineChart({
               {/* Dot */}
               {showDots && (
                 <View
-                  className="absolute rounded-full"
+                  className="absolute"
                   style={{
                     backgroundColor: color,
                     width: 6,

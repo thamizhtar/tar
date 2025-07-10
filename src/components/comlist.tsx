@@ -58,7 +58,7 @@ export default function ComList({ onNavigate, onClose }: ComListProps) {
               <TouchableOpacity
                 key={item.id}
                 onPress={() => handleItemPress(item.id)}
-                className={`py-5 ${index < commerceItems.length - 1 ? 'border-b border-gray-100' : ''}`}
+                className={`py-5`}
               >
                 <Text className="text-xl font-medium text-gray-900">
                   {item.title}

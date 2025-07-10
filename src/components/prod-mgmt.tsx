@@ -64,7 +64,7 @@ export default function ProductsManagementScreen() {
   return (
     <View className="flex-1 bg-gray-50">
       {/* Header */}
-      <View className="bg-white px-4 py-3 border-b border-gray-200">
+      <View className="bg-white px-4 py-3">
         <Text className="text-lg font-semibold text-gray-900">Products Management</Text>
         <Text className="text-sm text-gray-500 mt-1">Manage your products and inventory</Text>
       </View>
@@ -80,10 +80,10 @@ export default function ProductsManagementScreen() {
             <TouchableOpacity
               key={option.id}
               onPress={() => handleOptionPress(option.id)}
-              className="bg-white rounded-xl p-4 shadow-sm border border-gray-100"
+              className="bg-white p-4"
             >
               <View className="flex-row items-center">
-                <View className={`w-12 h-12 rounded-lg ${option.color} items-center justify-center mr-4`}>
+                <View className={`w-12 h-12 ${option.color} items-center justify-center mr-4`}>
                   <Text className="text-xl">{option.icon}</Text>
                 </View>
                 
@@ -107,7 +107,7 @@ export default function ProductsManagementScreen() {
         {/* Quick Stats */}
         <View className="mt-6">
           <Text className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</Text>
-          <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <View className="bg-white p-4">
             <View className="flex-row justify-between items-center mb-3">
               <Text className="text-sm text-gray-500">Total Products</Text>
               <Text className="text-lg font-bold text-gray-900">1,247</Text>
@@ -130,20 +130,20 @@ export default function ProductsManagementScreen() {
         {/* Recent Activity */}
         <View className="mt-6">
           <Text className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</Text>
-          <View className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+          <View className="bg-white p-4">
             <View className="space-y-3">
               <View className="flex-row items-center">
-                <View className="w-2 h-2 bg-green-500 rounded-full mr-3"></View>
+                <View className="w-2 h-2 bg-green-500 mr-3"></View>
                 <Text className="text-sm text-gray-600 flex-1">5 products added today</Text>
                 <Text className="text-xs text-gray-400">2h ago</Text>
               </View>
               <View className="flex-row items-center">
-                <View className="w-2 h-2 bg-blue-500 rounded-full mr-3"></View>
+                <View className="w-2 h-2 bg-blue-500 mr-3"></View>
                 <Text className="text-sm text-gray-600 flex-1">Inventory updated for Electronics</Text>
                 <Text className="text-xs text-gray-400">4h ago</Text>
               </View>
               <View className="flex-row items-center">
-                <View className="w-2 h-2 bg-orange-500 rounded-full mr-3"></View>
+                <View className="w-2 h-2 bg-orange-500 mr-3"></View>
                 <Text className="text-sm text-gray-600 flex-1">Price changes applied to 12 items</Text>
                 <Text className="text-xs text-gray-400">1d ago</Text>
               </View>

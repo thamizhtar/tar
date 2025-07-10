@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, BackHandler, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, BackHandler, StatusBar, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../lib/store-context';
 import StoreForm from './store-form';
@@ -108,10 +108,16 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
         <View className="px-6" style={{ paddingTop: insets.top + 20 }}>
           {/* User Status Header */}
           <View className="mb-6">
-            <View className="flex-row items-center justify-end">
-              <View className="w-3 h-3 bg-green-500 rounded-full mr-3" />
-              <Text className="text-4xl font-light text-gray-900">
-                {userData.status}
+            <View className="flex-row items-center justify-between">
+              <View className="w-12 h-12" style={{ borderRadius: 24, overflow: 'hidden' }}>
+                <Image
+                  source={require('../../assets/raven.png')}
+                  style={{ width: 48, height: 48 }}
+                  resizeMode="cover"
+                />
+              </View>
+              <Text className="text-lg font-bold text-gray-900">
+                {userData.status.toLowerCase()}
               </Text>
             </View>
           </View>
@@ -119,7 +125,7 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
           {/* Space Card - White */}
           <TouchableOpacity
             onPress={() => handleItemPress('space')}
-            className="bg-white rounded-3xl p-6 mb-1"
+            className="bg-white p-6 mb-1"
             style={{ minHeight: 160 }}
           >
             <View className="flex-row items-start justify-between">
@@ -131,7 +137,7 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
                     : 'Taxi arriving in 10 minutes'}
                 </Text>
               </View>
-              <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center">
+              <View className="w-10 h-10 bg-gray-100 items-center justify-center" style={{ borderRadius: 20 }}>
                 <Text className="text-lg">🌌</Text>
               </View>
             </View>
@@ -140,8 +146,8 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
           {/* Commerce Card - Green */}
           <TouchableOpacity
             onPress={() => handleItemPress('commerce')}
-            className="bg-green-500 rounded-3xl p-6"
-            style={{ minHeight: 160 }}
+            className="bg-green-500 p-6"
+            style={{ minHeight: 200, borderRadius: 10 }}
           >
             <View className="flex-1">
               {/* Header */}
@@ -159,26 +165,30 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
                 <View className="flex-row">
                   <TouchableOpacity
                     onPress={() => handleItemPress('products')}
-                    className="w-12 h-12 bg-yellow-400 rounded-full items-center justify-center mr-3"
+                    className="w-12 h-12 bg-yellow-400 items-center justify-center mr-3"
+                    style={{ borderRadius: 24 }}
                   >
                     <Text className="text-black text-xl font-bold">P</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleItemPress('products')}
-                    className="w-12 h-12 bg-purple-400 rounded-full items-center justify-center mr-3"
+                    className="w-12 h-12 bg-purple-400 items-center justify-center mr-3"
+                    style={{ borderRadius: 24 }}
                   >
                     <Text className="text-black text-xl font-bold">I</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleItemPress('reports')}
-                    className="w-12 h-12 bg-blue-400 rounded-full items-center justify-center"
+                    className="w-12 h-12 bg-blue-400 items-center justify-center"
+                    style={{ borderRadius: 24 }}
                   >
                     <Text className="text-black text-xl font-bold">R</Text>
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity
                   onPress={() => handleItemPress('comlist')}
-                  className="w-12 h-12 bg-black rounded-full items-center justify-center"
+                  className="w-12 h-12 bg-black items-center justify-center"
+                  style={{ borderRadius: 24 }}
                 >
                   <Text className="text-white text-xl font-bold">→</Text>
                 </TouchableOpacity>

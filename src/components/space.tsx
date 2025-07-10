@@ -15,53 +15,53 @@ export default function SpaceScreen({ onOpenMenu }: SpaceScreenProps) {
       title: 'Products',
       emoji: '🛍️',
       description: 'Browse and manage products',
-      color: 'bg-blue-50',
-      textColor: 'text-blue-600'
+      color: 'bg-white',
+      textColor: 'text-gray-900'
     },
     {
       id: 'food',
       title: 'Food & Dining',
       emoji: '🍕',
       description: 'Restaurant and food services',
-      color: 'bg-orange-50',
-      textColor: 'text-orange-600'
+      color: 'bg-white',
+      textColor: 'text-gray-900'
     },
     {
       id: 'cars',
       title: 'Car Rentals',
       emoji: '🚗',
       description: 'Vehicle booking and rentals',
-      color: 'bg-green-50',
-      textColor: 'text-green-600'
+      color: 'bg-white',
+      textColor: 'text-gray-900'
     },
     {
       id: 'bookings',
       title: 'Bookings',
       emoji: '📅',
       description: 'Appointments and reservations',
-      color: 'bg-purple-50',
-      textColor: 'text-purple-600'
+      color: 'bg-white',
+      textColor: 'text-gray-900'
     },
     {
       id: 'services',
       title: 'Services',
       emoji: '🔧',
       description: 'Professional services',
-      color: 'bg-indigo-50',
-      textColor: 'text-indigo-600'
+      color: 'bg-white',
+      textColor: 'text-gray-900'
     },
     {
       id: 'events',
       title: 'Events',
       emoji: '🎉',
       description: 'Event planning and tickets',
-      color: 'bg-pink-50',
-      textColor: 'text-pink-600'
+      color: 'bg-white',
+      textColor: 'text-gray-900'
     }
   ];
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-white">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Categories Grid */}
         <View className="px-4 pt-6">
@@ -69,7 +69,7 @@ export default function SpaceScreen({ onOpenMenu }: SpaceScreenProps) {
             {marketplaceCategories.map((category, index) => (
               <TouchableOpacity
                 key={category.id}
-                className={`w-[48%] mb-4 ${category.color} rounded-2xl p-4`}
+                className={`w-[48%] mb-4 ${category.color} p-4`}
               >
                 <Text className="text-3xl mb-3">{category.emoji}</Text>
                 <Text className={`text-lg font-semibold ${category.textColor} mb-1`}>

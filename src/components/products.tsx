@@ -47,7 +47,7 @@ const ProductItem = React.memo(({
     <TouchableOpacity
       onPress={onPress}
       onLongPress={onLongPress}
-      className={`border-b border-gray-100 px-4 py-4 ${
+      className={`px-4 py-4 ${
         isSelected ? 'bg-blue-50' : 'bg-white'
       }`}
       style={{
@@ -58,8 +58,8 @@ const ProductItem = React.memo(({
         {/* Multi-select checkbox */}
         {isMultiSelectMode && (
           <View className="mr-3">
-            <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-              isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+            <View className={`w-6 h-6 items-center justify-center ${
+              isSelected ? 'bg-blue-600' : 'bg-gray-300'
             }`}>
               {isSelected && (
                 <Feather name="check" size={14} color="white" />
@@ -333,7 +333,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
     return (
       <View className="flex-1 bg-white">
         {/* Header */}
-        <View className="bg-white border-b border-gray-200">
+        <View className="bg-white">
           <View className="px-4 py-4">
             <View className="flex-row items-center justify-between">
               <TouchableOpacity onPress={() => setShowFilterModal(false)}>
@@ -366,7 +366,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
           ].map((filterOption, index) => (
             <TouchableOpacity
               key={index}
-              className="px-4 py-4 border-b border-gray-100"
+              className="px-4 py-4"
             >
               <Text className="text-base text-gray-700">{filterOption}</Text>
             </TouchableOpacity>
@@ -403,7 +403,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
     return (
       <View className="flex-1 bg-white">
         {/* Search Bar */}
-        <View className="border-t border-b border-gray-200 bg-white px-4 py-3">
+        <View className="bg-white px-4 py-3">
           <View className="flex-row items-center">
             <TouchableOpacity onPress={handleAddNew}>
               <Feather name="plus" size={20} color="#9CA3AF" />
@@ -437,7 +437,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
   return (
     <View className="flex-1 bg-white">
       {/* Search Bar with top and bottom borders - NO spacing above */}
-      <View className="border-t border-b border-gray-200 bg-white px-4 py-3">
+      <View className="bg-white px-4 py-3">
         <View className="flex-row items-center">
           {/* Add Icon */}
           <TouchableOpacity onPress={handleAddNew}>
@@ -468,7 +468,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
               key={filter}
               onPress={() => setActiveFilter(filter)}
               className={`mr-6 pb-2 ${
-                activeFilter === filter ? 'border-b-2 border-gray-900' : ''
+                activeFilter === filter ? '' : ''
               }`}
             >
               <Text className={`text-base font-medium ${
@@ -487,7 +487,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
         {filteredProducts.length === 0 ? (
           <View className="flex-1 justify-center items-center p-8">
             <View className="items-center">
-              <View className="w-16 h-16 bg-gray-200 rounded-full items-center justify-center mb-4">
+              <View className="w-16 h-16 bg-gray-200 items-center justify-center mb-4">
                 <Text className="text-2xl">📦</Text>
               </View>
               <Text className="text-lg font-medium text-gray-900 mb-2">No products found</Text>
@@ -525,14 +525,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
 
       {/* Bottom Drawer for Multi-select Actions - Fixed overlay issue */}
       {showBottomDrawer && (
-        <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl px-4 py-4 border-t border-gray-200 shadow-lg"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            elevation: 10,
-          }}
+        <View className="absolute bottom-0 left-0 right-0 bg-white px-4 py-4"
         >
           {/* Header */}
           <View className="flex-row items-center justify-between mb-4">
@@ -548,7 +541,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
           <View className="gap-3">
             <TouchableOpacity
               onPress={handleDeleteSelected}
-              className="flex-row items-center justify-center bg-red-50 py-3 rounded-lg"
+              className="flex-row items-center justify-center bg-red-50 py-3"
             >
               <Feather name="trash-2" size={18} color="#DC2626" />
               <Text className="text-red-600 font-medium ml-2 text-base">
@@ -558,7 +551,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
 
             <TouchableOpacity
               onPress={handleCancelMultiSelect}
-              className="flex-row items-center justify-center bg-gray-100 py-3 rounded-lg"
+              className="flex-row items-center justify-center bg-gray-100 py-3"
             >
               <Text className="text-gray-700 font-medium text-base">
                 Cancel

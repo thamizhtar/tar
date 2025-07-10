@@ -223,10 +223,9 @@ export default function ProductSelect({ collectionId, onClose }: ProductSelectPr
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {/* Header with Safe Area */}
+    <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
+      {/* Header - Clean minimal design with left-aligned title */}
       <View style={{
-        paddingTop: insets.top,
         backgroundColor: '#fff',
       }}>
         <View style={{
@@ -238,14 +237,11 @@ export default function ProductSelect({ collectionId, onClose }: ProductSelectPr
           borderBottomWidth: 1,
           borderBottomColor: '#E5E7EB',
         }}>
-          <TouchableOpacity onPress={onClose}>
-            <MaterialIcons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-
           <Text style={{
             fontSize: 18,
             fontWeight: '600',
             color: '#111827',
+            flex: 1,
           }}>
             Select Products
           </Text>

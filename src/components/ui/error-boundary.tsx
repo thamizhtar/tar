@@ -115,7 +115,7 @@ export function LoadingError({ error, onRetry, retryText = 'Retry' }: LoadingErr
       {onRetry && (
         <TouchableOpacity
           onPress={onRetry}
-          className="bg-blue-600 px-4 py-2 rounded-lg mt-4"
+          className="bg-blue-600 px-4 py-2 mt-4"
         >
           <Text className="text-white font-medium">{retryText}</Text>
         </TouchableOpacity>
@@ -150,7 +150,7 @@ export function EmptyState({ icon = 'inbox', title, description, action }: Empty
       {action && (
         <TouchableOpacity
           onPress={action.onPress}
-          className="bg-blue-600 px-6 py-3 rounded-lg mt-6"
+          className="bg-blue-600 px-6 py-3 mt-6"
         >
           <Text className="text-white font-semibold">{action.label}</Text>
         </TouchableOpacity>

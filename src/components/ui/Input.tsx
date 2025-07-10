@@ -27,11 +27,11 @@ export default function Input({
   const getVariantStyles = () => {
     switch (variant) {
       case 'filled':
-        return 'bg-gray-100 border-gray-200';
+        return 'bg-gray-100';
       case 'outline':
-        return 'bg-transparent border-gray-300';
+        return 'bg-transparent';
       default:
-        return 'bg-gray-50 border-gray-200';
+        return 'bg-gray-50';
     }
   };
 
@@ -62,8 +62,8 @@ export default function Input({
     }
   };
 
-  const borderColor = error ? 'border-red-300' : 'border-gray-200';
-  const focusBorderColor = error ? 'focus:border-red-500' : 'focus:border-blue-500';
+  const borderColor = error ? '' : '';
+  const focusBorderColor = error ? '' : '';
 
   return (
     <View className="w-full">
@@ -73,7 +73,7 @@ export default function Input({
         </Text>
       )}
       
-      <View className={`relative flex-row items-center ${borderColor} ${focusBorderColor}`}>
+      <View className={`relative flex-row items-center`}>
         {leftIcon && (
           <View className="absolute left-3 z-10">
             {leftIcon}
@@ -86,8 +86,7 @@ export default function Input({
             ${getSizeStyles()}
             ${leftIcon ? 'pl-10' : ''}
             ${rightIcon ? 'pr-10' : ''}
-            ${borderColor}
-            border rounded-lg text-gray-900 w-full
+            text-gray-900 w-full
             ${multiline ? 'py-3' : ''}
             ${className}
           `}

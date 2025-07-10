@@ -982,7 +982,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
             overflow: 'hidden',
           }}>
             {/* First Row: Image Upload Only */}
-            <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: '#E5E7EB' }}>
+            <View style={{ flexDirection: 'row' }}>
               {/* Image Upload Tile - Square */}
               <TouchableOpacity
                 style={{
@@ -1062,7 +1062,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
             </View>
 
             {/* Product Title */}
-            <View style={{ paddingHorizontal: 16, paddingTop: 16, borderBottomWidth: 1, borderColor: '#E5E7EB' }}>
+            <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
               <TextInput
                 style={{
                   fontSize: 24,
@@ -2568,6 +2568,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         <Metafields
           productId={product?.id}
           onClose={() => setShowMetafields(false)}
+          showHeader={false}
         />
       </Modal>
 
