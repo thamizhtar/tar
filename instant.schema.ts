@@ -26,10 +26,13 @@ const _schema = i.schema({
     collections: i.entity({
       createdAt: i.date(),
       description: i.string().optional(),
+      image: i.string().optional(), // Primary collection image URL
       isActive: i.boolean(),
       name: i.string().unique().indexed(),
       parent: i.string().optional(),
+      pos: i.boolean().optional(), // Available in POS
       sortOrder: i.number().optional(),
+      storefront: i.boolean().optional(), // Available on storefront
       storeId: i.string().indexed(),
       updatedAt: i.date(),
     }),
@@ -207,18 +210,6 @@ const _schema = i.schema({
     }),
   },
   links: {
-    inventoryStocks: {
-      forward: {
-        on: "inventory",
-        has: "many",
-        label: "stocks",
-      },
-      reverse: {
-        on: "stocks",
-        has: "one",
-        label: "inventory",
-      },
-    },
     productsCollection: {
       forward: {
         on: "products",

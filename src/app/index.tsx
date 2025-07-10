@@ -5,6 +5,7 @@ import { Feather } from '@expo/vector-icons';
 import ProductsScreen from "../components/products";
 import ProductFormScreen from "../components/prod-form";
 import CollectionsScreen from "../components/collections";
+import CollectionFormScreen from "../components/col-form";
 import ProductsManagementScreen from "../components/prod-mgmt";
 import CollectionsManagementScreen from "../components/col-mgmt";
 import SpaceScreen from "../components/space";
@@ -32,6 +33,8 @@ export default function Page() {
   const [showManagement, setShowManagement] = useState(false); // false = product/collection list (default), true = management screen
   const [productFormProduct, setProductFormProduct] = useState<any>(null); // Track product being edited in form
   const [isProductFormOpen, setIsProductFormOpen] = useState(false); // Track if product form is open
+  const [collectionFormCollection, setCollectionFormCollection] = useState<any>(null); // Track collection being edited in form
+  const [isCollectionFormOpen, setIsCollectionFormOpen] = useState(false); // Track if collection form is open
   const [optionSetData, setOptionSetData] = useState<{id?: string, name?: string}>({});
 
   // Run complete migration process on app startup
@@ -106,7 +109,28 @@ export default function Page() {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
 
     return () => backHandler.remove();
-  }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen]);
+  }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen, isCollectionFormOpen]);
+
+  // Form handlers
+  const openProductForm = useCallback((product?: any) => {
+    setProductFormProduct(product || null);
+    setIsProductFormOpen(true);
+  }, []);
+
+  const closeProductForm = useCallback(() => {
+    setProductFormProduct(null);
+    setIsProductFormOpen(false);
+  }, []);
+
+  const openCollectionForm = useCallback((collection?: any) => {
+    setCollectionFormCollection(collection || null);
+    setIsCollectionFormOpen(true);
+  }, []);
+
+  const closeCollectionForm = useCallback(() => {
+    setCollectionFormCollection(null);
+    setIsCollectionFormOpen(false);
+  }, []);
 
   const handleNavigate = useCallback((screen: Screen, data?: any) => {
     setCurrentScreen(screen);
@@ -149,10 +173,20 @@ export default function Page() {
       return (
         <ProductFormScreen
           product={productFormProduct}
-          onClose={() => {
-            setProductFormProduct(null);
-            setIsProductFormOpen(false);
+          onClose={closeProductForm}
+          onSave={() => {
+            // Refresh will happen automatically due to real-time updates
           }}
+        />
+      );
+    }
+
+    // If collection form is open, render it full screen
+    if (isCollectionFormOpen) {
+      return (
+        <CollectionFormScreen
+          collection={collectionFormCollection}
+          onClose={closeCollectionForm}
           onSave={() => {
             // Refresh will happen automatically due to real-time updates
           }}
@@ -200,7 +234,10 @@ export default function Page() {
           }}
         />;
       case 'collections':
-        return <CollectionsScreen isGridView={isGridView} />;
+        return <CollectionsScreen
+          isGridView={isGridView}
+          onOpenForm={openCollectionForm}
+        />;
       case 'options':
         return <Options
           onClose={() => handleNavigate('space')}
@@ -225,8 +262,8 @@ export default function Page() {
     <StoreProvider>
       <ErrorBoundary>
         <View className="flex flex-1">
-          {currentScreen === 'menu' || currentScreen === 'options' || isProductFormOpen ? (
-            // Full screen screens without header or bottom navigation (including product form)
+          {currentScreen === 'menu' || currentScreen === 'options' || isProductFormOpen || isCollectionFormOpen ? (
+            // Full screen screens without header or bottom navigation (including product and collection forms)
             <ErrorBoundary>
               {renderMainContent()}
             </ErrorBoundary>
@@ -244,6 +281,8 @@ export default function Page() {
                 setShowManagement={setShowManagement}
                 productFormProduct={productFormProduct}
                 isProductFormOpen={isProductFormOpen}
+                collectionFormCollection={collectionFormCollection}
+                isCollectionFormOpen={isCollectionFormOpen}
               />
               <ErrorBoundary>
                 {renderMainContent()}
@@ -404,7 +443,7 @@ function MenuScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   );
 }
 
-function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, isGridView, setIsGridView, showManagement, setShowManagement, productFormProduct, isProductFormOpen }: {
+function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, isGridView, setIsGridView, showManagement, setShowManagement, productFormProduct, isProductFormOpen, collectionFormCollection, isCollectionFormOpen }: {
   currentScreen: Screen;
   onNavigate: (screen: Screen) => void;
   showBottomTabs: boolean;
@@ -415,6 +454,8 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
   setShowManagement: (show: boolean) => void;
   productFormProduct?: any;
   isProductFormOpen?: boolean;
+  collectionFormCollection?: any;
+  isCollectionFormOpen?: boolean;
 }) {
   const insets = useSafeAreaInsets();
 
@@ -425,6 +466,15 @@ function Header({ currentScreen, onNavigate, showBottomTabs, setShowBottomTabs, 
       return {
         title: productTitle,
         icon: '📦'
+      };
+    }
+
+    // If collection form is open, show collection title without "Collections:" prefix
+    if (screen === 'collections' && isCollectionFormOpen) {
+      const collectionTitle = collectionFormCollection?.name || '';
+      return {
+        title: collectionTitle,
+        icon: '🏷️'
       };
     }
 

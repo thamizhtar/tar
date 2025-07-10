@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, FlatList, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { id } from '@instantdb/react-native';
 import { db, getCurrentTimestamp } from '../lib/instant';
-import CollectionFormScreen from './col-form';
+import R2Image from './ui/r2-image';
 
 interface CollectionsScreenProps {
   isGridView?: boolean;
+  onOpenForm?: (collection?: any) => void;
 }
 
-export default function CollectionsScreen({ isGridView = false }: CollectionsScreenProps) {
+export default function CollectionsScreen({ isGridView = false, onOpenForm }: CollectionsScreenProps) {
   const insets = useSafeAreaInsets();
-  const [showForm, setShowForm] = useState(false);
-  const [editingCollection, setEditingCollection] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showActionDrawer, setShowActionDrawer] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<any>(null);
@@ -31,23 +30,12 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
   );
 
   const handleAdd = () => {
-    setEditingCollection(null);
-    setShowForm(true);
+    onOpenForm?.();
   };
 
   const handleEdit = (collection: any) => {
-    setEditingCollection(collection);
-    setShowForm(true);
+    onOpenForm?.(collection);
     setShowActionDrawer(false);
-  };
-
-  const handleFormClose = () => {
-    setShowForm(false);
-    setEditingCollection(null);
-  };
-
-  const handleFormSave = () => {
-    // Refresh will happen automatically via InstantDB reactivity
   };
 
   const handleThreeDotsPress = (collection: any) => {
@@ -105,23 +93,26 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
     );
   }
 
-  // Show form screen if showForm is true
-  if (showForm) {
-    return (
-      <CollectionFormScreen
-        collection={editingCollection}
-        onClose={handleFormClose}
-        onSave={handleFormSave}
-      />
-    );
-  }
-
   return (
-    <View className="flex-1 bg-white">
-      {/* Search Bar - Clean minimal design */}
-      <View className="bg-white border-b border-gray-200">
-        <View className="px-4 pt-4 pb-4">
-          <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      {/* Search Bar with Safe Area - Clean minimal design */}
+      <View style={{
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        paddingTop: insets.top
+      }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 16 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: '#F9FAFB',
+            borderWidth: 1,
+            borderColor: '#E5E7EB',
+            borderRadius: 8,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+          }}>
             {/* Search Icon */}
             <Feather name="search" size={20} color="#6B7280" />
 
@@ -130,7 +121,13 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
               placeholder="Search collections"
               value={searchQuery}
               onChangeText={setSearchQuery}
-              className="flex-1 text-base text-gray-900 ml-3 mr-3"
+              style={{
+                flex: 1,
+                fontSize: 16,
+                color: '#111827',
+                marginLeft: 12,
+                marginRight: 12,
+              }}
               placeholderTextColor="#9CA3AF"
             />
 
@@ -143,15 +140,38 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
       </View>
 
       {/* Collections List - Minimal clean design */}
-      <View className="flex-1">
+      <View style={{ flex: 1 }}>
         {filteredCollections.length === 0 ? (
-          <View className="flex-1 justify-center items-center p-8">
-            <View className="items-center">
-              <View className="w-16 h-16 bg-gray-200 rounded-full items-center justify-center mb-4">
-                <Text className="text-2xl">📚</Text>
+          <View style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 32
+          }}>
+            <View style={{ alignItems: 'center' }}>
+              <View style={{
+                width: 64,
+                height: 64,
+                backgroundColor: '#E5E7EB',
+                borderRadius: 32,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+              }}>
+                <Text style={{ fontSize: 24 }}>📚</Text>
               </View>
-              <Text className="text-lg font-medium text-gray-900 mb-2">No collections found</Text>
-              <Text className="text-gray-500 text-center">
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '500',
+                color: '#111827',
+                marginBottom: 8
+              }}>
+                No collections found
+              </Text>
+              <Text style={{
+                color: '#6B7280',
+                textAlign: 'center'
+              }}>
                 {searchQuery ? 'Try adjusting your search' : 'Create your first collection to organize products'}
               </Text>
             </View>
@@ -161,22 +181,107 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
             data={filteredCollections}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 16 }}
             renderItem={({ item: collection }) => (
               <TouchableOpacity
                 onPress={() => handleEdit(collection)}
-                className="bg-white border-b border-gray-100 px-4 py-4"
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#F3F4F6',
+                  paddingHorizontal: 16,
+                  paddingVertical: 16,
+                }}
               >
-                <View className="flex-row items-center">
-                  {/* Collection Info */}
-                  <View className="flex-1">
-                    <Text className="text-lg font-medium text-gray-900 mb-1" numberOfLines={1}>
-                      {collection.name}
-                    </Text>
-                    {collection.description && (
-                      <Text className="text-gray-600 text-sm" numberOfLines={1}>
-                        {collection.description}
-                      </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {/* Collection Image */}
+                  <View style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 8,
+                    backgroundColor: '#F3F4F6',
+                    marginRight: 12,
+                    overflow: 'hidden',
+                  }}>
+                    {collection.image ? (
+                      <R2Image
+                        url={collection.image}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={{
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <MaterialIcons name="collections" size={24} color="#9CA3AF" />
+                      </View>
                     )}
+                  </View>
+
+                  {/* Collection Info */}
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={{
+                        fontSize: 18,
+                        fontWeight: '500',
+                        color: '#111827',
+                        flex: 1,
+                      }} numberOfLines={1}>
+                        {collection.name}
+                      </Text>
+
+                      {/* Status indicators */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+                        {collection.storefront && (
+                          <View style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: '#10B981',
+                            marginRight: 4,
+                          }} />
+                        )}
+                        {collection.pos && (
+                          <View style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: '#3B82F6',
+                            marginRight: 4,
+                          }} />
+                        )}
+                        {!collection.isActive && (
+                          <View style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: '#EF4444',
+                          }} />
+                        )}
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View>
+                        {collection.description && (
+                          <Text style={{
+                            color: '#6B7280',
+                            fontSize: 14,
+                            marginBottom: 2,
+                          }} numberOfLines={1}>
+                            {collection.description}
+                          </Text>
+                        )}
+                        <Text style={{
+                          color: '#9CA3AF',
+                          fontSize: 12,
+                        }}>
+                          {collection.products?.length || 0} product{(collection.products?.length || 0) !== 1 ? 's' : ''}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
 
                   {/* Three dots menu */}
@@ -185,7 +290,10 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
                       e.stopPropagation();
                       handleThreeDotsPress(collection);
                     }}
-                    className="p-2 ml-2"
+                    style={{
+                      padding: 8,
+                      marginLeft: 8,
+                    }}
                   >
                     <Feather name="more-horizontal" size={20} color="#6B7280" />
                   </TouchableOpacity>
