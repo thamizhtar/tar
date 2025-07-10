@@ -360,7 +360,7 @@ export default function WorkspaceContent({ currentScreen }: WorkspaceContentProp
   );
 
   switch (currentScreen) {
-    case 'dashboard':
+    case 'space':
       return renderDashboardWorkspace();
     case 'products':
       return <ProductsScreen isGridView={false} />;

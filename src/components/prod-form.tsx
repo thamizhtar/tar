@@ -982,7 +982,11 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
             overflow: 'hidden',
           }}>
             {/* First Row: Image Upload Only */}
-            <View style={{ flexDirection: 'row' }}>
+            <View style={{
+              flexDirection: 'row',
+              borderBottomWidth: 1,
+              borderBottomColor: '#E5E7EB',
+            }}>
               {/* Image Upload Tile - Square */}
               <TouchableOpacity
                 style={{
@@ -1101,12 +1105,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
 
 
-            {/* Notes and Options Row */}
+            {/* Bottom Row: Notes, Options, POS, Website, Status */}
             <View style={{
               flexDirection: 'row',
               backgroundColor: '#fff',
-              borderBottomWidth: 1,
-              borderColor: '#E5E7EB',
+              borderTopWidth: 1,
+              borderTopColor: '#E5E7EB',
             }}>
               {/* Notes Tile - Square */}
               <TouchableOpacity
@@ -1124,27 +1128,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>n</Text>
               </TouchableOpacity>
 
-              {/* Options Tile - Rectangle taking remaining space */}
+              {/* Options Tile - Square */}
               <TouchableOpacity
                 style={{
-                  flex: 1,
+                  width: 60,
                   height: 60,
                   backgroundColor: '#fff',
+                  borderRightWidth: 1,
+                  borderColor: '#E5E7EB',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  paddingHorizontal: 12,
                 }}
                 onPress={() => setShowOptionSetSelector(true)}
               >
                 <Text style={{ fontSize: 20, fontWeight: '600', color: '#111827' }}>O</Text>
               </TouchableOpacity>
-            </View>
 
-            {/* Bottom Row: POS, Website, Status */}
-            <View style={{
-              flexDirection: 'row',
-              backgroundColor: '#fff',
-            }}>
               {/* POS Tile - Square */}
               <TouchableOpacity
                 style={{

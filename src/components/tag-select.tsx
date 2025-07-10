@@ -238,23 +238,7 @@ export default function TagSelect({ selectedTags = [], onSelect, onClose }: TagS
         </View>
       </View>
 
-      {/* Selected Tags Count */}
-      {localSelectedTags.length > 0 && (
-        <View style={{
-          backgroundColor: '#F3F4F6',
-          paddingHorizontal: 20,
-          paddingVertical: 8,
-          borderBottomWidth: 1,
-          borderBottomColor: '#E5E7EB',
-        }}>
-          <Text style={{
-            fontSize: 14,
-            color: '#6B7280',
-          }}>
-            {localSelectedTags.length} tag{localSelectedTags.length !== 1 ? 's' : ''} selected
-          </Text>
-        </View>
-      )}
+
 
       {/* Create New Tag Option */}
       {showCreateOption && (

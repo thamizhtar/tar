@@ -25,6 +25,14 @@ import ErrorBoundary from "../components/ui/error-boundary";
 
 type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu' | 'option-create' | 'option-edit';
 
+interface NavigationState {
+  screen: Screen;
+  showBottomTabs: boolean;
+  activeBottomTab: BottomTab;
+  showManagement: boolean;
+  data?: any;
+}
+
 export default function Page() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('space');
   const [activeBottomTab, setActiveBottomTab] = useState<BottomTab>('workspace');
@@ -36,6 +44,14 @@ export default function Page() {
   const [collectionFormCollection, setCollectionFormCollection] = useState<any>(null); // Track collection being edited in form
   const [isCollectionFormOpen, setIsCollectionFormOpen] = useState(false); // Track if collection form is open
   const [optionSetData, setOptionSetData] = useState<{id?: string, name?: string}>({});
+
+  // Navigation stack to track navigation history
+  const [navigationStack, setNavigationStack] = useState<NavigationState[]>([{
+    screen: 'space',
+    showBottomTabs: true,
+    activeBottomTab: 'workspace',
+    showManagement: false
+  }]);
 
   // Run complete migration process on app startup
   useEffect(() => {
@@ -61,12 +77,43 @@ export default function Page() {
     runCompleteMigration();
   }, []);
 
+  // Function to go back using navigation stack
+  const handleGoBack = useCallback(() => {
+    if (navigationStack.length > 1) {
+      // Remove current state and get previous state
+      const newStack = [...navigationStack];
+      newStack.pop(); // Remove current state
+      const previousState = newStack[newStack.length - 1];
+
+      if (previousState) {
+        // Restore previous state
+        setCurrentScreen(previousState.screen);
+        setShowBottomTabs(previousState.showBottomTabs);
+        setActiveBottomTab(previousState.activeBottomTab);
+        setShowManagement(previousState.showManagement);
+        if (previousState.data) {
+          setOptionSetData(previousState.data);
+        }
+
+        // Update navigation stack
+        setNavigationStack(newStack);
+        return true;
+      }
+    }
+    return false;
+  }, [navigationStack]);
+
   // Handle Android back button
   useEffect(() => {
     const backAction = () => {
       // If product form is open, let the product form handle the back button
       if (isProductFormOpen) {
         return false; // Let the product form's back handler take over
+      }
+
+      // If collection form is open, let the collection form handle the back button
+      if (isCollectionFormOpen) {
+        return false; // Let the collection form's back handler take over
       }
 
       // If in management view, go back to list view
@@ -81,35 +128,29 @@ export default function Page() {
         return true;
       }
 
-      // If in option create/edit screens, go back to options
-      if (currentScreen === 'option-create' || currentScreen === 'option-edit') {
-        setCurrentScreen('options');
+      // Try to go back using navigation stack
+      const didGoBack = handleGoBack();
+      if (didGoBack) {
         return true;
       }
 
-      // If in menu, go back to space
-      if (currentScreen === 'menu') {
-        setCurrentScreen('space');
-        return true;
+      // If on space and no navigation history, allow default back behavior (exit app)
+      if (currentScreen === 'space') {
+        return false;
       }
 
-      // If not on space, go to space
-      if (currentScreen !== 'space') {
-        setCurrentScreen('space');
-        setShowBottomTabs(true);
-        setActiveBottomTab('workspace');
-        setShowManagement(false);
-        return true;
-      }
-
-      // If on space, allow default back behavior (exit app)
-      return false;
+      // Fallback: if navigation stack is empty or failed, go to space
+      setCurrentScreen('space');
+      setShowBottomTabs(true);
+      setActiveBottomTab('workspace');
+      setShowManagement(false);
+      return true;
     };
 
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
 
     return () => backHandler.remove();
-  }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen, isCollectionFormOpen]);
+  }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen, isCollectionFormOpen, handleGoBack]);
 
   // Form handlers
   const openProductForm = useCallback((product?: any) => {
@@ -133,6 +174,15 @@ export default function Page() {
   }, []);
 
   const handleNavigate = useCallback((screen: Screen, data?: any) => {
+    // Save current state to navigation stack before navigating
+    const currentState: NavigationState = {
+      screen: currentScreen,
+      showBottomTabs,
+      activeBottomTab,
+      showManagement,
+      data: optionSetData
+    };
+
     setCurrentScreen(screen);
 
     // For menu screen, ensure we reset all navigation states
@@ -154,7 +204,16 @@ export default function Page() {
     if (screen === 'option-create' || screen === 'option-edit') {
       setOptionSetData(data || {});
     }
-  }, []);
+
+    // Add current state to navigation stack (but avoid duplicates of the same screen)
+    setNavigationStack(prev => {
+      const lastState = prev[prev.length - 1];
+      if (lastState?.screen !== currentScreen) {
+        return [...prev, currentState];
+      }
+      return prev;
+    });
+  }, [currentScreen, showBottomTabs, activeBottomTab, showManagement, optionSetData]);
 
   const handleBottomTabPress = useCallback((tab: BottomTab) => {
     setActiveBottomTab(tab);
@@ -330,7 +389,7 @@ function MenuScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
         {/* Main Navigation Cards */}
         <View className="gap-4">
           <TouchableOpacity
-            onPress={() => onNavigate('dashboard')}
+            onPress={() => onNavigate('space')}
             className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm"
           >
             <View className="flex-row items-center">
@@ -339,7 +398,7 @@ function MenuScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
               </View>
               <View className="flex-1">
                 <Text className="text-xl font-semibold text-gray-900 mb-1">
-                  Dashboard
+                  Space
                 </Text>
                 <Text className="text-gray-600">
                   Sales metrics and analytics
