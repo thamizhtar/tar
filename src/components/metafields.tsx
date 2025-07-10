@@ -51,8 +51,7 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
 
-  // Debug current store
-  console.log('Current store in metafields:', currentStore);
+
 
   // Handle Android back button
   useEffect(() => {
@@ -95,7 +94,6 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
 
   // Load definitions and values
   useEffect(() => {
-    console.log('Metafields data changed:', metafieldsData);
     if (metafieldsData?.metafields) {
       const defs = metafieldsData.metafields.map(field => ({
         id: field.id,
@@ -107,11 +105,8 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
         config: field.config || {},
         value: field.value || ''
       })).sort((a, b) => a.order - b.order);
-      console.log('Processed definitions:', defs);
-      console.log('Available groups after processing:', [...new Set(defs.map(d => d.group))]);
       setDefinitions(defs);
     } else {
-      console.log('No metafields data or empty');
       setDefinitions([]);
     }
   }, [metafieldsData]);
@@ -158,19 +153,14 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
         })
       );
 
-      console.log('Group created:', newGroupName.trim());
       setNewGroupName('');
       setShowAddGroupModal(false);
     } catch (error) {
-      console.error('Error adding group:', error);
       Alert.alert('Error', 'Failed to add group');
     }
   };
 
   const addDefinition = async () => {
-    console.log('Adding metafield with data:', newFieldData);
-    console.log('Current store:', currentStore?.id);
-
     if (!newFieldData.title.trim()) {
       Alert.alert('Error', 'Please enter a title for the metafield');
       return;
@@ -192,8 +182,6 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
         .filter(def => def.group === selectedGroup)
         .reduce((max, def) => Math.max(max, def.order), -1);
 
-      console.log('Creating metafield with ID:', definitionId);
-
       await db.transact(
         db.tx.metafields[definitionId].update({
           title: newFieldData.title.trim(),
@@ -207,8 +195,6 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
           parentid: 'metafield-definitions'
         })
       );
-
-      console.log('Metafield created successfully');
 
       setNewFieldData({
         title: '',
@@ -228,8 +214,6 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
   // Get all groups including those with only placeholders
   const getAllGroups = () => {
     const groups = [...new Set(definitions.map(def => def.group))];
-    console.log('All groups (including placeholders):', groups);
-    console.log('Current definitions:', definitions);
     return groups.sort();
   };
 
@@ -238,14 +222,12 @@ export default function Metafields({ productId, onClose }: MetafieldsProps) {
     const groups = [...new Set(definitions
       .filter(def => def.title !== '__GROUP_PLACEHOLDER__')
       .map(def => def.group))];
-    console.log('Groups with metafields:', groups);
     return groups.sort();
   };
 
   // Get groups for display (all groups, including empty ones)
   const getDisplayGroups = () => {
     const displayGroups = getAllGroups();
-    console.log('Display groups:', displayGroups);
     return displayGroups;
   };
 

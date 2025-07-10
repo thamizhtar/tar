@@ -12,8 +12,6 @@ export interface MigrationStatus {
 }
 
 export const verifyMigrationStatus = async (): Promise<MigrationStatus> => {
-  console.log('🔍 Verifying migration status...');
-  
   try {
     // Get all products
     const { data } = await db.queryOnce({
@@ -21,7 +19,6 @@ export const verifyMigrationStatus = async (): Promise<MigrationStatus> => {
     });
 
     const products = data?.products || [];
-    console.log(`📦 Found ${products.length} products to verify`);
 
     const status: MigrationStatus = {
       totalProducts: products.length,
@@ -35,7 +32,6 @@ export const verifyMigrationStatus = async (): Promise<MigrationStatus> => {
 
     if (products.length === 0) {
       status.migrationComplete = true;
-      console.log('✅ No products found - migration complete by default');
       return status;
     }
 
@@ -79,38 +75,14 @@ export const verifyMigrationStatus = async (): Promise<MigrationStatus> => {
         status.hasLegacyData++;
       }
 
-      // Log detailed info for first few products
-      if (status.totalProducts <= 5 || status.issues.length <= 10) {
-        console.log(`📋 Product ${product.id}:`, {
-          title: product.title,
-          name: product.name,
-          hasNewFields,
-          hasLegacyFields,
-          missingRequired
-        });
-      }
     }
 
     // Determine if migration is complete
     status.migrationComplete = status.fullyMigrated === status.totalProducts && status.hasLegacyData === 0;
 
-    console.log('📊 Migration Status Summary:');
-    console.log(`  Total Products: ${status.totalProducts}`);
-    console.log(`  Fully Migrated: ${status.fullyMigrated}`);
-    console.log(`  Partially Migrated: ${status.partiallyMigrated}`);
-    console.log(`  Not Migrated: ${status.notMigrated}`);
-    console.log(`  Has Legacy Data: ${status.hasLegacyData}`);
-    console.log(`  Migration Complete: ${status.migrationComplete ? '✅' : '❌'}`);
-
-    if (status.issues.length > 0) {
-      console.log('⚠️ Issues found:');
-      status.issues.forEach(issue => console.log(`  - ${issue}`));
-    }
-
     return status;
 
   } catch (error) {
-    console.error('❌ Error verifying migration status:', error);
     throw error;
   }
 };
@@ -118,16 +90,8 @@ export const verifyMigrationStatus = async (): Promise<MigrationStatus> => {
 export const runMigrationVerification = async () => {
   try {
     const status = await verifyMigrationStatus();
-    
-    if (status.migrationComplete) {
-      console.log('🎉 Migration verification complete - all products migrated!');
-    } else {
-      console.log('⚠️ Migration incomplete - manual intervention may be required');
-    }
-    
     return status;
   } catch (error) {
-    console.error('❌ Migration verification failed:', error);
     return null;
   }
 };

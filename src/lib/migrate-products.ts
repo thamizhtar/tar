@@ -2,8 +2,6 @@
 import { db, getCurrentTimestamp } from './instant';
 
 export const migrateProductsToNewSchema = async () => {
-  console.log('🔄 Starting product schema migration...');
-  
   try {
     // Get all products
     const { data } = await db.queryOnce({
@@ -11,10 +9,8 @@ export const migrateProductsToNewSchema = async () => {
     });
 
     const products = data?.products || [];
-    console.log(`📦 Found ${products.length} products to migrate`);
 
     if (products.length === 0) {
-      console.log('✅ No products to migrate');
       return { success: true, migrated: 0 };
     }
 
@@ -53,7 +49,6 @@ export const migrateProductsToNewSchema = async () => {
       if (product.isActive !== undefined && product.pos === undefined) {
         updates.pos = product.isActive;
         needsUpdate = true;
-        console.log(`⚙️ Migrating isActive to pos for "${product.name || product.title}"`);
       }
 
       // Set default values for new fields if they don't exist
@@ -61,8 +56,6 @@ export const migrateProductsToNewSchema = async () => {
         updates.website = false;
         needsUpdate = true;
       }
-
-
 
       if (product.featured === undefined) {
         updates.featured = false;
@@ -72,18 +65,15 @@ export const migrateProductsToNewSchema = async () => {
       if (needsUpdate) {
         await db.transact(db.tx.products[product.id].update(updates));
         migratedCount++;
-        console.log(`✅ Migrated product: ${product.name || product.title}`);
       }
     }
 
-    console.log(`🎉 Migration completed! Migrated ${migratedCount} products`);
     return { success: true, migrated: migratedCount };
 
   } catch (error) {
-    console.error('❌ Migration failed:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 };
@@ -91,8 +81,6 @@ export const migrateProductsToNewSchema = async () => {
 // Helper function to run migration in development
 export const runMigrationIfNeeded = async () => {
   if (__DEV__) {
-    console.log('🔍 Checking if migration is needed...');
-
     try {
       // Check if there are products with old schema
       const { data } = await db.queryOnce({
@@ -108,34 +96,22 @@ export const runMigrationIfNeeded = async () => {
       );
 
       if (needsMigration) {
-        console.log('🚀 Migration needed, starting...');
         const result = await migrateProductsToNewSchema();
-
-        if (result.success) {
-          console.log(`✅ Migration completed successfully! Migrated ${result.migrated} products`);
-        } else {
-          console.error('❌ Migration failed:', result.error);
-        }
-      } else {
-        console.log('✅ No migration needed, all products are up to date');
       }
     } catch (error) {
-      console.error('❌ Error checking migration status:', error);
+      // Silent error handling in development
     }
   }
 };
 
 // Force complete migration for all products
 export const forceCompleteMigration = async () => {
-  console.log('🔄 Force completing migration for all products...');
-
   try {
     const { data } = await db.queryOnce({
       products: {}
     });
 
     const products = data?.products || [];
-    console.log(`📦 Processing ${products.length} products`);
 
     let processedCount = 0;
     const timestamp = getCurrentTimestamp();
@@ -195,15 +171,12 @@ export const forceCompleteMigration = async () => {
       if (needsUpdate) {
         await db.transact(db.tx.products[product.id].update(updates));
         processedCount++;
-        console.log(`✅ Updated product: ${product.title || product.name || product.id}`);
       }
     }
 
-    console.log(`🎉 Force migration completed! Processed ${processedCount} products`);
     return { success: true, processed: processedCount };
 
   } catch (error) {
-    console.error('❌ Force migration failed:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
