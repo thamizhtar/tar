@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated, ScrollView, Keyboard, Platform, KeyboardAvoidingView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { id } from '@instantdb/react-native';
@@ -161,6 +161,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [activeTab, setActiveTab] = useState('core');
   const [imageError, setImageError] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [showTypeSelect, setShowTypeSelect] = useState(false);
   const [showCategorySelect, setShowCategorySelect] = useState(false);
   const [showVendorSelect, setShowVendorSelect] = useState(false);
@@ -201,10 +203,58 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showMetafields, setShowMetafields] = useState(false);
   const [selectedMetafieldIds, setSelectedMetafieldIds] = useState<string[]>([]);
   const [showMetafieldSelector, setShowMetafieldSelector] = useState(false);
+  const [selectedMetafieldGroup, setSelectedMetafieldGroup] = useState<string | null>(null);
   const [metafieldValues, setMetafieldValues] = useState<Record<string, any>>({});
   const [showMetafieldValueEditor, setShowMetafieldValueEditor] = useState(false);
   const [currentEditingField, setCurrentEditingField] = useState<any>(null);
   const [tempFieldValue, setTempFieldValue] = useState('');
+
+  // Memoized computations for better performance
+  const selectedMetafields = useMemo(() => {
+    if (!metafieldDefinitionsData?.metafieldSets) return [];
+    return metafieldDefinitionsData.metafieldSets.filter((def: any) =>
+      selectedMetafieldIds.includes(def.id)
+    );
+  }, [metafieldDefinitionsData?.metafieldSets, selectedMetafieldIds]);
+
+  const groupedMetafields = useMemo(() => {
+    if (!metafieldDefinitionsData?.metafieldSets) return {};
+    return metafieldDefinitionsData.metafieldSets.reduce((acc: any, field: any) => {
+      const groupName = field.group || 'Ungrouped';
+      if (!acc[groupName]) {
+        acc[groupName] = [];
+      }
+      acc[groupName].push(field);
+      return acc;
+    }, {});
+  }, [metafieldDefinitionsData?.metafieldSets]);
+
+  // Memoized placeholder function for better performance
+  const getFieldPlaceholder = useCallback((type: string) => {
+    switch (type) {
+      case 'single_line_text': return 'Enter text';
+      case 'multi_line_text': return 'Enter description';
+      case 'number': return 'Enter number';
+      case 'email': return 'Enter email address';
+      case 'url': return 'Enter URL';
+      case 'phone': return 'Enter phone number';
+      case 'weight': return 'Enter weight';
+      case 'dimension': return 'Enter dimensions';
+      case 'volume': return 'Enter volume';
+      case 'money': return 'Enter amount';
+      case 'rating': return 'Enter rating';
+      case 'date': return 'Enter date';
+      case 'date_time': return 'Enter date and time';
+      case 'color': return 'Enter color';
+      case 'boolean': return 'True or False';
+      default: return 'Enter value';
+    }
+  }, []);
+
+  // Memoized type display function
+  const getFieldTypeDisplay = useCallback((type: string) => {
+    return type ? type.replace(/_/g, ' ') : 'Value';
+  }, []);
 
   // Items search and filter states
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
@@ -256,7 +306,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   // Track collection changes for hasChanges detection
   useEffect(() => {
-    if (isEditing && productCollection) {
+    if (!isInitializing && isDataLoaded && isEditing && productCollection) {
       // If we're editing and the selected collection differs from the original
       if (selectedCollectionId !== productCollection?.id) {
         setHasChanges(true);
@@ -264,7 +314,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     }
     // For new products, don't automatically set hasChanges just because a collection is selected
     // Only set hasChanges when user actually makes changes via updateField
-  }, [selectedCollectionId, productCollection?.id, isEditing]);
+  }, [selectedCollectionId, productCollection?.id, isEditing, isInitializing, isDataLoaded]);
 
 
 
@@ -310,6 +360,26 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       setSelectedMetafieldIds(selectedIds);
     }
   }, [product?.metafields, metafieldDefinitionsData]);
+
+  // Track when initial data is fully loaded
+  useEffect(() => {
+    if (!isDataLoaded && formData && (isEditing ? product : true)) {
+      setIsDataLoaded(true);
+    }
+  }, [formData, product, isEditing, isDataLoaded]);
+
+  // Mark initialization as complete after all initial data is loaded
+  useEffect(() => {
+    if (isInitializing && isDataLoaded) {
+      // Wait for data to be loaded, then add a delay to ensure all effects have completed
+      const timer = setTimeout(() => {
+        setIsInitializing(false);
+        // Reset hasChanges to false after initialization to clear any false positives
+        setHasChanges(false);
+      }, 500); // Longer delay to ensure all effects have completed
+      return () => clearTimeout(timer);
+    }
+  }, [isInitializing, isDataLoaded]);
 
   // Function to check if there are actual changes
   const checkForChanges = (newFormData: any) => {
@@ -358,7 +428,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         return JSON.stringify(original.sort()) !== JSON.stringify(current.sort());
       }
 
-      return original !== current;
+      // Handle null/undefined comparisons
+      if (original == null && current == null) return false;
+      if (original == null || current == null) return true;
+
+      // Convert to strings for comparison to handle type differences
+      return String(original) !== String(current);
     });
 
     // Check if metafields have changed
@@ -397,8 +472,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     const newFormData = { ...formData, [field]: value };
     setFormData(newFormData);
 
-    // Only set hasChanges if there are actual changes
-    setHasChanges(checkForChanges(newFormData));
+    // Only set hasChanges if fully initialized and there are actual changes
+    if (!isInitializing && isDataLoaded) {
+      setHasChanges(checkForChanges(newFormData));
+    }
   };
 
   const updateOptions = () => {
@@ -409,7 +486,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     updateField('options', optionsData);
   };
 
-  const handleMetafieldSelection = (fieldId: string) => {
+  const handleMetafieldSelection = useCallback((fieldId: string) => {
     if (selectedMetafieldIds.includes(fieldId)) {
       // Remove field
       setSelectedMetafieldIds(prev => prev.filter(id => id !== fieldId));
@@ -432,8 +509,32 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       }
     }
 
-    setHasChanges(true);
-  };
+    // Only set hasChanges if fully initialized
+    if (!isInitializing && isDataLoaded) {
+      setHasChanges(true);
+    }
+  }, [selectedMetafieldIds, metafieldDefinitionsData?.metafieldSets, metafieldValues, isInitializing, isDataLoaded]);
+
+  const handleSelectAllMetafields = useCallback((groupName: string) => {
+    const fieldsInGroup = groupedMetafields[groupName] || [];
+    const allSelected = fieldsInGroup.every((field: any) => selectedMetafieldIds.includes(field.id));
+
+    if (allSelected) {
+      // Deselect all fields in group
+      fieldsInGroup.forEach((field: any) => {
+        if (selectedMetafieldIds.includes(field.id)) {
+          handleMetafieldSelection(field.id);
+        }
+      });
+    } else {
+      // Select all fields in group
+      fieldsInGroup.forEach((field: any) => {
+        if (!selectedMetafieldIds.includes(field.id)) {
+          handleMetafieldSelection(field.id);
+        }
+      });
+    }
+  }, [groupedMetafields, selectedMetafieldIds, handleMetafieldSelection]);
 
 
 
@@ -444,9 +545,11 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     const newFormData = { ...formData, medias: media };
     setFormData(newFormData);
 
-    // Only set hasChanges if there are actual changes
-    setHasChanges(checkForChanges(newFormData));
-  }, [formData, product]);
+    // Only set hasChanges if fully initialized and there are actual changes
+    if (!isInitializing && isDataLoaded) {
+      setHasChanges(checkForChanges(newFormData));
+    }
+  }, [formData, product, isInitializing, isDataLoaded]);
 
   const generateItemsFromOptionSets = async (optionSetNames: string[]) => {
     if (!product?.id || !currentStore?.id) {
@@ -880,14 +983,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (formData.options) productData.options = formData.options;
       if (formData.modifiers) productData.modifiers = formData.modifiers;
       // Handle metafields - build metafields object from selected fields and values
-      if (selectedMetafieldIds.length > 0 && metafieldDefinitionsData?.metafieldSets) {
+      if (selectedMetafields.length > 0) {
         const metafieldData: Record<string, any> = {};
 
-        const selectedFields = metafieldDefinitionsData.metafieldSets.filter((def: any) =>
-          selectedMetafieldIds.includes(def.id)
-        );
-
-        selectedFields.forEach((field: any) => {
+        selectedMetafields.forEach((field: any) => {
           const fieldName = field.name || field.title;
           const value = metafieldValues[fieldName];
           if (value !== undefined && value !== '') {
@@ -1246,16 +1345,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               </TouchableOpacity>
 
               {/* Selected Metafields */}
-              {selectedMetafieldIds.length > 0 && metafieldDefinitionsData?.metafieldSets && (
+              {selectedMetafields.length > 0 && (
                 <View>
-                  {(() => {
-                    // Get selected fields by ID
-                    const allSelectedFields = metafieldDefinitionsData.metafieldSets.filter((def: any) =>
-                      selectedMetafieldIds.includes(def.id)
-                    );
-
-                    return allSelectedFields.map((field: any) => {
-                      const fieldName = field.name || field.title || 'Untitled Field';
+                  {selectedMetafields.map((field: any) => {
+                    const fieldName = field.name || field.title || 'Untitled Field';
 
                       return (
                         <TouchableOpacity
@@ -1293,8 +1386,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                           </Text>
                         </TouchableOpacity>
                       );
-                    });
-                  })()}
+                    })}
                 </View>
               )}
             </View>
@@ -2588,7 +2680,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         visible={showMetafieldSelector}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowMetafieldSelector(false)}
+        onRequestClose={() => {
+          setShowMetafieldSelector(false);
+          setSelectedMetafieldGroup(null);
+        }}
       >
         <View style={{ flex: 1, backgroundColor: '#fff' }}>
           {/* Header */}
@@ -2605,11 +2700,24 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               paddingHorizontal: 16,
               paddingVertical: 16,
             }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
-                Select Metafields
+              {selectedMetafieldGroup ? (
+                <TouchableOpacity
+                  onPress={() => setSelectedMetafieldGroup(null)}
+                  style={{ padding: 4 }}
+                >
+                  <MaterialIcons name="arrow-back" size={24} color="#111827" />
+                </TouchableOpacity>
+              ) : (
+                <View style={{ width: 32 }} />
+              )}
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827', flex: 1, textAlign: 'center' }}>
+                {selectedMetafieldGroup || 'Select Metafields'}
               </Text>
               <TouchableOpacity
-                onPress={() => setShowMetafieldSelector(false)}
+                onPress={() => {
+                  setShowMetafieldSelector(false);
+                  setSelectedMetafieldGroup(null);
+                }}
                 style={{ padding: 4 }}
               >
                 <Text style={{ fontSize: 16, color: '#3B82F6', fontWeight: '500' }}>
@@ -2654,36 +2762,63 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 );
               }
 
-              // Get unique groups
-              const groups = [...new Set(
-                metafieldDefinitionsData.metafieldSets.map((def: any) => def.group)
-              )].sort();
+              // Get unique groups from memoized data
+              const groups = Object.keys(groupedMetafields).sort();
 
-              return groups.map((groupName: string) => {
-                const fieldsInGroup = metafieldDefinitionsData.metafieldSets.filter((def: any) => def.group === groupName);
+              if (selectedMetafieldGroup) {
+                // Show fields in selected group
+                const fieldsInGroup = groupedMetafields[selectedMetafieldGroup] || [];
+                const allSelected = fieldsInGroup.every((field: any) => selectedMetafieldIds.includes(field.id));
+                const someSelected = fieldsInGroup.some((field: any) => selectedMetafieldIds.includes(field.id));
 
                 return (
-                  <View key={groupName}>
-                    {/* Group Header */}
-                    <View style={{
-                      backgroundColor: '#F9FAFB',
-                      paddingVertical: 12,
-                      paddingHorizontal: 16,
-                      borderBottomWidth: 1,
-                      borderBottomColor: '#E5E7EB',
-                    }}>
-                      <Text style={{
-                        fontSize: 14,
-                        fontWeight: '600',
-                        color: '#374151',
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.5,
+                  <View>
+                    {/* Select All Button */}
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: '#F9FAFB',
+                        paddingVertical: 16,
+                        paddingHorizontal: 16,
+                        borderBottomWidth: 1,
+                        borderBottomColor: '#E5E7EB',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                      }}
+                      onPress={() => handleSelectAllMetafields(selectedMetafieldGroup)}
+                    >
+                      <View style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 2,
+                        borderColor: allSelected ? '#3B82F6' : someSelected ? '#3B82F6' : '#D1D5DB',
+                        backgroundColor: allSelected ? '#3B82F6' : 'transparent',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
                       }}>
-                        {groupName}
+                        {allSelected && (
+                          <MaterialIcons name="check" size={12} color="#fff" />
+                        )}
+                        {someSelected && !allSelected && (
+                          <View style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: '#3B82F6',
+                          }} />
+                        )}
+                      </View>
+                      <Text style={{
+                        fontSize: 16,
+                        fontWeight: '600',
+                        color: '#111827',
+                      }}>
+                        Select All
                       </Text>
-                    </View>
+                    </TouchableOpacity>
 
-                    {/* Fields in Group */}
+                    {/* Fields List */}
                     {fieldsInGroup.map((field: any) => {
                       const isSelected = selectedMetafieldIds.includes(field.id);
 
@@ -2729,7 +2864,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                               color: '#6B7280',
                               marginTop: 2,
                             }}>
-                              {field.type.replace(/_/g, ' ')}
+                              {getFieldTypeDisplay(field.type)}
                             </Text>
                           </View>
                         </TouchableOpacity>
@@ -2737,7 +2872,51 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                     })}
                   </View>
                 );
-              });
+              } else {
+                // Show group list
+                return groups.map((groupName: string) => {
+                  const fieldsInGroup = groupedMetafields[groupName] || [];
+                  const selectedCount = fieldsInGroup.filter((field: any) => selectedMetafieldIds.includes(field.id)).length;
+
+                  return (
+                    <TouchableOpacity
+                      key={groupName}
+                      style={{
+                        backgroundColor: '#fff',
+                        paddingVertical: 16,
+                        paddingHorizontal: 16,
+                        borderBottomWidth: 1,
+                        borderBottomColor: '#F3F4F6',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                      onPress={() => setSelectedMetafieldGroup(groupName)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={{
+                          fontSize: 16,
+                          fontWeight: '500',
+                          color: '#111827',
+                        }}>
+                          {groupName}
+                        </Text>
+                        <Text style={{
+                          fontSize: 14,
+                          color: '#6B7280',
+                          marginTop: 2,
+                        }}>
+                          {selectedCount > 0
+                            ? `${selectedCount} of ${fieldsInGroup.length} selected`
+                            : `${fieldsInGroup.length} field${fieldsInGroup.length !== 1 ? 's' : ''}`
+                          }
+                        </Text>
+                      </View>
+                      <MaterialCommunityIcons name="chevron-right" size={20} color="#C7C7CC" />
+                    </TouchableOpacity>
+                  );
+                });
+              }
             })()}
           </ScrollView>
         </View>
@@ -2784,7 +2963,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                       ...prev,
                       [fieldName]: tempFieldValue
                     }));
-                    setHasChanges(true);
+                    if (!isInitializing && isDataLoaded) {
+                      setHasChanges(true);
+                    }
                   }
                   setShowMetafieldValueEditor(false);
                   setCurrentEditingField(null);
@@ -2806,7 +2987,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               color: '#6B7280',
               marginBottom: 8,
             }}>
-              {currentEditingField?.type ? currentEditingField.type.replace(/_/g, ' ') : 'Value'}
+              {getFieldTypeDisplay(currentEditingField?.type)}
             </Text>
             <TextInput
               style={{
@@ -2820,27 +3001,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               }}
               value={tempFieldValue}
               onChangeText={setTempFieldValue}
-              placeholder={(() => {
-                const type = currentEditingField?.type;
-                switch (type) {
-                  case 'single_line_text': return 'Enter text';
-                  case 'multi_line_text': return 'Enter description';
-                  case 'number': return 'Enter number';
-                  case 'email': return 'Enter email address';
-                  case 'url': return 'Enter URL';
-                  case 'phone': return 'Enter phone number';
-                  case 'weight': return 'Enter weight';
-                  case 'dimension': return 'Enter dimensions';
-                  case 'volume': return 'Enter volume';
-                  case 'money': return 'Enter amount';
-                  case 'rating': return 'Enter rating';
-                  case 'date': return 'Enter date';
-                  case 'date_time': return 'Enter date and time';
-                  case 'color': return 'Enter color';
-                  case 'boolean': return 'True or False';
-                  default: return 'Enter value';
-                }
-              })()}
+              placeholder={getFieldPlaceholder(currentEditingField?.type || '')}
               keyboardType={
                 currentEditingField?.type === 'number' ||
                 currentEditingField?.type === 'weight' ||
