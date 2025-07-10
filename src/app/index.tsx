@@ -13,7 +13,7 @@ import SalesScreen from "../components/sales";
 import ReportsScreen from "../components/reports";
 import FullScreenMenu from "../components/menu";
 import Options from "../components/options";
-import Metafields from "../components/metafields";
+import MetafieldsSystem from "../components/metafields-system";
 
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
@@ -303,7 +303,7 @@ export default function Page() {
           onOpenMenu={() => handleNavigate('menu')}
         />;
       case 'metafields':
-        return <Metafields
+        return <MetafieldsSystem
           onClose={() => handleNavigate('menu')}
         />;
 

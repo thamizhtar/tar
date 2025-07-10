@@ -39,7 +39,7 @@ import VendorSelect from './vendor-select';
 import BrandSelect from './brand-select';
 import CollectionSelect from './collection-select';
 import TagSelect from './tag-select';
-import Metafields from './metafields';
+import MetafieldsSystem from './metafields-system';
 import { log, trackError, PerformanceMonitor } from '../lib/logger';
 import ErrorBoundary from './ui/error-boundary';
 import OptionValuesSelector from '../screens/option-values-selector';
@@ -1220,72 +1220,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   paddingVertical: 16,
                   paddingHorizontal: 16,
                   borderTopWidth: 0,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                 }}
-                onPress={() => setShowMetafieldGroupSelector(true)}
+                onPress={() => setShowMetafields(true)}
               >
-                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Metafields</Text>
-                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-                  {selectedMetafieldGroup ? `${selectedMetafieldGroup} selected` : 'Select metafield group'}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Metafields</Text>
+                  <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                    Manage custom data for this product
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#C7C7CC" />
               </TouchableOpacity>
 
-              {/* Selected Metafields List */}
-              {selectedMetafieldGroup && (() => {
-                const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
 
-                // Get all fields from selected group, excluding placeholders
-                const fieldsFromSelectedGroup = metafieldDefinitions.filter((def: any) =>
-                  def.group === selectedMetafieldGroup &&
-                  def.title !== '__GROUP_PLACEHOLDER__'
-                );
-
-                return fieldsFromSelectedGroup.map((metafield: any, index: number) => {
-                  const currentValue = metafieldValues[metafield.title] || metafield.value || '';
-
-                  return (
-                    <View key={`${metafield.title}-${index}`} style={{
-                      backgroundColor: '#fff',
-                      borderBottomWidth: 1,
-                      borderBottomColor: '#E5E7EB',
-                      paddingVertical: 16,
-                      paddingHorizontal: 16,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                    }}>
-                      <Text style={{
-                        fontSize: 16,
-                        fontWeight: '500',
-                        color: '#111827',
-                        flex: 1,
-                      }}>
-                        {metafield.title}
-                      </Text>
-                      <TextInput
-                        style={{
-                          fontSize: 16,
-                          color: '#111827',
-                          paddingVertical: 8,
-                          paddingHorizontal: 0,
-                          borderWidth: 0,
-                          backgroundColor: 'transparent',
-                          textAlign: 'right',
-                          flex: 1,
-                        }}
-                        value={currentValue.toString()}
-                        onChangeText={(value) => {
-                          setMetafieldValues(prev => ({ ...prev, [metafield.title]: value }));
-                          setHasChanges(true);
-                        }}
-
-                        placeholder="value"
-                        placeholderTextColor="#9CA3AF"
-                        multiline={false}
-                        keyboardType={metafield.type === 'number' ? 'numeric' : 'default'}
-                      />
-                    </View>
-                  );
-                });
-              })()}
             </View>
           </View>
         </TabContent>
@@ -2564,10 +2514,11 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         presentationStyle="fullScreen"
         onRequestClose={() => setShowMetafields(false)}
       >
-        <Metafields
-          productId={product?.id}
+        <MetafieldsSystem
+          entityId={product?.id}
+          entityType="products"
           onClose={() => setShowMetafields(false)}
-          showHeader={false}
+          showHeader={true}
         />
       </Modal>
 

@@ -64,16 +64,29 @@ const _schema = i.schema({
       type: i.string().optional(),
       url: i.string().optional(),
     }),
-    metafields: i.entity({
-      config: i.any().optional(),
-      filter: i.boolean().indexed().optional(),
-      group: i.string().indexed().optional(), // Index for better group queries
-      order: i.number().optional(),
-      parentid: i.string().indexed(), // Required for linking definitions/values
-      storeId: i.string().indexed(), // Required for store isolation
-      title: i.string(), // Required field
-      type: i.string().indexed().optional(), // Index for filtering by type
-      value: i.string().optional(),
+    // Metafield Sets - Define custom field types for each category
+    metafieldSets: i.entity({
+      name: i.string(), // Field name like "Warranty Period"
+      type: i.string(), // Field type: text, number, boolean, date, etc.
+      category: i.string().indexed(), // products, items, collections, customers, orders, etc.
+      group: i.string().optional(), // Display group for organization
+      order: i.number().optional(), // Display order within group
+      inputConfig: i.json().optional(), // Input conditions, validations, options
+      required: i.boolean().optional(),
+      description: i.string().optional(),
+      storeId: i.string().indexed(),
+      createdAt: i.date(),
+      updatedAt: i.date(),
+    }),
+
+    // Metafield Values - Store actual values for entities
+    metafieldValues: i.entity({
+      setId: i.string().indexed(), // Links to metafieldSets
+      entityId: i.string().indexed(), // ID of the product/item/collection/etc
+      value: i.string(), // The actual value
+      storeId: i.string().indexed(),
+      createdAt: i.date(),
+      updatedAt: i.date(),
     }),
     modifiers: i.entity({
       identifier: i.string().optional(),
@@ -208,6 +221,8 @@ const _schema = i.schema({
       name: i.string().unique().indexed(),
       storeId: i.string().indexed(),
     }),
+
+
   },
   links: {
     productsCollection: {
