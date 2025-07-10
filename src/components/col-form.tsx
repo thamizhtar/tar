@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { id } from '@instantdb/react-native';
-import Input from './ui/Input';
-import Button from './ui/Button';
-import Card from './ui/Card';
+import { MaterialIcons } from '@expo/vector-icons';
 import { db, getCurrentTimestamp } from '../lib/instant';
 
 interface CollectionFormScreenProps {
@@ -24,9 +22,27 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
   });
 
   const [loading, setLoading] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
+
+  // Handle Android back button
+  useEffect(() => {
+    const backAction = () => {
+      if (hasChanges) {
+        setShowUnsavedChangesModal(true);
+        return true;
+      }
+      onClose();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [hasChanges, onClose]);
 
   const updateField = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
   };
 
   const handleSave = async () => {
@@ -52,6 +68,7 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
         await db.transact(db.tx.collections[id()].update(collectionData));
       }
 
+      setHasChanges(false);
       onSave?.();
       onClose();
     } catch (error) {
@@ -61,128 +78,226 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
     }
   };
 
+  const handleClose = () => {
+    if (hasChanges) {
+      setShowUnsavedChangesModal(true);
+    } else {
+      onClose();
+    }
+  };
+
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Header */}
-      <View className="bg-white border-b border-gray-200">
-        <View className="px-4 py-4">
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity onPress={onClose}>
-              <Text className="text-blue-600 text-base font-medium">Cancel</Text>
-            </TouchableOpacity>
-            
-            <View className="flex-row items-center">
-              <Text className="text-base font-medium text-gray-900 mr-3">
-                {formData.isActive ? 'Active' : 'Inactive'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => updateField('isActive', !formData.isActive)}
-                className={`w-12 h-6 rounded-full ${formData.isActive ? 'bg-green-500' : 'bg-gray-300'}`}
-              >
-                <View className={`w-5 h-5 bg-white rounded-full mt-0.5 ${formData.isActive ? 'ml-6' : 'ml-0.5'}`} />
-              </TouchableOpacity>
-            </View>
-            
-            <Button
-              title="Save"
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      {/* Header - Clean minimal design */}
+      <View style={{
+        paddingTop: insets.top,
+        paddingHorizontal: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        backgroundColor: '#fff',
+      }}>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <TouchableOpacity onPress={handleClose}>
+            <MaterialIcons name="arrow-back" size={24} color="#111827" />
+          </TouchableOpacity>
+
+          <Text style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: '#111827',
+          }}>
+            {isEditing ? 'Edit Collection' : 'New Collection'}
+          </Text>
+
+          {/* Save Button - Only show when changes exist */}
+          {hasChanges && (
+            <TouchableOpacity
               onPress={handleSave}
-              loading={loading}
-              size="small"
+              disabled={loading}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: '#3B82F6',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <MaterialIcons name="check" size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
+
+          {!hasChanges && <View style={{ width: 32 }} />}
+        </View>
+      </View>
+
+      {/* Form Content - Following prod-form design pattern */}
+      <View style={{ flex: 1, padding: 16 }}>
+        {/* Main Container with Border */}
+        <View style={{
+          borderWidth: 1,
+          borderColor: '#E5E7EB',
+          backgroundColor: '#fff',
+          borderRadius: 8,
+          overflow: 'hidden',
+        }}>
+          {/* Collection Name */}
+          <View style={{ paddingHorizontal: 16, paddingTop: 16, borderBottomWidth: 1, borderColor: '#E5E7EB' }}>
+            <TextInput
+              style={{
+                fontSize: 24,
+                fontWeight: '600',
+                color: '#000',
+                paddingVertical: 12,
+                paddingHorizontal: 0,
+                borderWidth: 0,
+                backgroundColor: 'transparent',
+              }}
+              value={formData.name}
+              onChangeText={(value) => updateField('name', value)}
+              placeholder="COLLECTION NAME"
+              placeholderTextColor="#999"
             />
+
+            {/* Description field */}
+            <TextInput
+              style={{
+                fontSize: 16,
+                color: '#6B7280',
+                paddingVertical: 8,
+                paddingHorizontal: 0,
+                borderWidth: 0,
+                backgroundColor: 'transparent',
+                marginTop: 4,
+                marginBottom: 16,
+              }}
+              value={formData.description}
+              onChangeText={(value) => updateField('description', value)}
+              placeholder="description"
+              placeholderTextColor="#9CA3AF"
+              multiline
+            />
+          </View>
+
+          {/* Status Toggle */}
+          <View style={{
+            flexDirection: 'row',
+            backgroundColor: '#fff',
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>
+              Active Status
+            </Text>
+            <TouchableOpacity
+              onPress={() => updateField('isActive', !formData.isActive)}
+              style={{
+                width: 48,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: formData.isActive ? '#10B981' : '#D1D5DB',
+                justifyContent: 'center',
+                paddingHorizontal: 2,
+              }}
+            >
+              <View style={{
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: '#fff',
+                alignSelf: formData.isActive ? 'flex-end' : 'flex-start',
+              }} />
+            </TouchableOpacity>
           </View>
         </View>
       </View>
 
-      <ScrollView 
-        className="flex-1" 
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: Math.max(32, insets.bottom + 24) }}
+      {/* Unsaved Changes Modal */}
+      <Modal
+        visible={showUnsavedChangesModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowUnsavedChangesModal(false)}
       >
-        <View className="px-4 pt-6">
-          {/* Image Upload Area */}
-          <Card padding="large" className="mb-6">
-            <TouchableOpacity className="items-center py-8">
-              <View className="w-16 h-16 bg-green-100 rounded-lg items-center justify-center mb-3">
-                <Text className="text-2xl">📁</Text>
-              </View>
-              <Text className="text-green-600 text-base font-medium">
-                Add collection image
-              </Text>
-            </TouchableOpacity>
-          </Card>
-
-          {/* Collection Name */}
-          <Card padding="medium" className="mb-6">
-            <Input
-              placeholder="Collection name"
-              value={formData.name}
-              onChangeText={(value) => updateField('name', value)}
-              variant="filled"
-              size="large"
-            />
-          </Card>
-
-          {/* Description */}
-          <Card padding="medium" className="mb-6">
-            <Input
-              label="Description"
-              placeholder="Enter collection description"
-              value={formData.description}
-              onChangeText={(value) => updateField('description', value)}
-              variant="filled"
-              multiline
-              numberOfLines={4}
-            />
-          </Card>
-
-          {/* Visibility */}
-          <View className="mb-6">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">Visibility</Text>
-            <Card padding="medium">
-              <View className="flex-row items-center">
-                <View className="w-3 h-3 bg-green-500 rounded-full mr-3" />
-                <Text className="text-base text-gray-900 flex-1">Online Store</Text>
-              </View>
-            </Card>
-          </View>
-
-          {/* Products */}
-          <View className="mb-6">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">Products</Text>
-            <Card padding="medium">
-              <TouchableOpacity className="flex-row items-center justify-between py-2">
-                <Text className="text-green-600 text-base">+ Add products</Text>
-                <Text className="text-gray-400 text-xl">›</Text>
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+        }}>
+          <View style={{
+            backgroundColor: '#fff',
+            paddingTop: 20,
+            paddingBottom: 20 + insets.bottom,
+            paddingHorizontal: 20,
+          }}>
+            <Text style={{
+              fontSize: 16,
+              fontWeight: '500',
+              color: '#111827',
+              marginBottom: 16,
+              textAlign: 'center',
+            }}>
+              Unsaved Changes
+            </Text>
+            <Text style={{
+              fontSize: 14,
+              color: '#6B7280',
+              marginBottom: 24,
+              textAlign: 'center',
+            }}>
+              You have unsaved changes. What would you like to do?
+            </Text>
+            <View style={{ gap: 12 }}>
+              <TouchableOpacity
+                onPress={handleSave}
+                style={{
+                  backgroundColor: '#3B82F6',
+                  paddingVertical: 12,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '500' }}>
+                  Save Changes
+                </Text>
               </TouchableOpacity>
-            </Card>
-          </View>
-
-          {/* SEO */}
-          <View className="mb-6">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">Search engine listing</Text>
-            <Card padding="medium">
-              <TouchableOpacity className="flex-row items-center justify-between py-2">
-                <Text className="text-base text-gray-900">Edit SEO settings</Text>
-                <Text className="text-gray-400 text-xl">›</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowUnsavedChangesModal(false);
+                  onClose();
+                }}
+                style={{
+                  backgroundColor: '#F3F4F6',
+                  paddingVertical: 12,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#111827', fontSize: 16, fontWeight: '500' }}>
+                  Discard Changes
+                </Text>
               </TouchableOpacity>
-            </Card>
-          </View>
-
-          {/* Collection Type */}
-          <View className="mb-8">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">Collection type</Text>
-            <Card padding="medium">
-              <TouchableOpacity className="flex-row items-center justify-between py-2">
-                <View>
-                  <Text className="text-base text-gray-900">Manual</Text>
-                  <Text className="text-sm text-gray-500">Add products individually</Text>
-                </View>
-                <Text className="text-gray-400 text-xl">›</Text>
+              <TouchableOpacity
+                onPress={() => setShowUnsavedChangesModal(false)}
+                style={{
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#6B7280', fontSize: 16 }}>
+                  Continue Editing
+                </Text>
               </TouchableOpacity>
-            </Card>
+            </View>
           </View>
         </View>
-      </ScrollView>
+      </Modal>
     </View>
   );
 }

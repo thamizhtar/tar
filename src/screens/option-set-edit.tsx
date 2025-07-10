@@ -273,29 +273,26 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
 
   const renderIdentifierTile = (value: OptionValue) => {
     const { identifierType, identifierValue } = value;
-    
+
     return (
       <TouchableOpacity
         onPress={() => handleEditIdentifier(value.id)}
         style={{
-          width: 44,
-          height: 44,
+          width: 40,
+          height: 40,
           borderRadius: 8,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: identifierType === 'color' ? identifierValue : '#E5E5EA',
-          borderWidth: identifierType === 'color' ? 0 : 1,
-          borderColor: '#C6C6C8',
-          marginRight: 12,
+          backgroundColor: identifierType === 'color' ? identifierValue : '#F2F2F7',
         }}
       >
         {identifierType === 'text' && (
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#1C1C1E' }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#000' }}>
             {identifierValue.substring(0, 2).toUpperCase()}
           </Text>
         )}
         {identifierType === 'image' && (
-          <MaterialIcons name="image" size={24} color="#8E8E93" />
+          <MaterialIcons name="image" size={20} color="#8E8E93" />
         )}
       </TouchableOpacity>
     );
@@ -306,29 +303,24 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: 12,
-      paddingHorizontal: 20,
-      backgroundColor: 'white',
+      paddingHorizontal: 16,
+      backgroundColor: '#fff',
       borderBottomWidth: 1,
       borderBottomColor: '#F2F2F7',
     }}>
       {renderIdentifierTile(item)}
-      
-      <Text style={{ flex: 1, fontSize: 17, color: '#1C1C1E' }}>
+
+      <Text style={{ flex: 1, fontSize: 17, color: '#000', marginLeft: 12 }}>
         {item.name}
       </Text>
-      
+
       <TouchableOpacity
         onPress={() => handleDeleteValue(item.id)}
         style={{
-          width: 32,
-          height: 32,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderRadius: 16,
-          backgroundColor: '#FF3B30',
+          padding: 8,
         }}
       >
-        <MaterialIcons name="close" size={18} color="white" />
+        <Text style={{ fontSize: 16, color: '#8E8E93' }}>•••</Text>
       </TouchableOpacity>
     </View>
   );
@@ -336,16 +328,17 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
   const editingValue = values.find(v => v.id === editingValueId);
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'white' }}>
-      <StatusBar barStyle="dark-content" backgroundColor="white" />
-      
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+
       {/* Header */}
       <View style={{
         paddingTop: insets.top,
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         paddingBottom: 16,
+        backgroundColor: '#fff',
         borderBottomWidth: 1,
-        borderBottomColor: '#F2F2F7',
+        borderBottomColor: '#E5E7EB',
       }}>
         <View style={{
           flexDirection: 'row',
@@ -354,51 +347,58 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
           marginTop: 16,
         }}>
           <TouchableOpacity onPress={onClose}>
-            <Text style={{ fontSize: 17, color: '#007AFF' }}>Cancel</Text>
+            <Text style={{ fontSize: 16, color: '#6B7280' }}>Cancel</Text>
           </TouchableOpacity>
-          
+
           <Text style={{
             fontSize: 18,
             fontWeight: '600',
-            color: '#1C1C1E',
+            color: '#111827',
           }}>
             {isNewSet ? 'New Option Set' : 'Edit Option Set'}
           </Text>
-          
+
           <TouchableOpacity onPress={handleSave}>
-            <Text style={{ fontSize: 17, color: '#007AFF', fontWeight: '600' }}>Save</Text>
+            <Text style={{ fontSize: 16, color: '#3B82F6', fontWeight: '600' }}>Save</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Set Name Input */}
-      <View style={{ padding: 20 }}>
-        <Text style={{
-          fontSize: 16,
-          fontWeight: '500',
-          color: '#1C1C1E',
-          marginBottom: 8,
-        }}>
-          Option Set Name
-        </Text>
+      {/* Option Set Name */}
+      <View style={{
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+      }}>
+        <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Option Set Name</Text>
         <TextInput
           style={{
-            backgroundColor: 'white',
-            borderWidth: 1,
-            borderColor: '#E5E5EA',
-            borderRadius: 8,
-            paddingHorizontal: 16,
-            paddingVertical: 12,
             fontSize: 16,
-            color: '#1C1C1E',
-            marginBottom: 20,
+            color: '#111827',
+            paddingVertical: 8,
+            paddingHorizontal: 0,
+            borderWidth: 0,
+            backgroundColor: 'transparent',
+            marginTop: 4,
           }}
-          placeholder="Enter option set name"
           value={currentSetName}
           onChangeText={setCurrentSetName}
+          placeholder="New Option Set"
+          placeholderTextColor="#9CA3AF"
         />
+      </View>
 
-        {/* Group Selection */}
+      {/* Group Tabs */}
+      <View style={{
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+      }}>
+        <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827', marginBottom: 12 }}>Group</Text>
         <GroupManager
           currentGroup={currentGroup}
           onGroupSelect={handleGroupSelect}
@@ -408,47 +408,30 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
         />
       </View>
 
-      {/* Add Value Input */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
-        <Text style={{
-          fontSize: 16,
-          fontWeight: '500',
-          color: '#1C1C1E',
-          marginBottom: 8,
-        }}>
-          Add Value
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          <TextInput
-            style={{
-              flex: 1,
-              backgroundColor: 'white',
-              borderWidth: 1,
-              borderColor: '#E5E5EA',
-              borderRadius: 8,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
-              fontSize: 16,
-              color: '#1C1C1E',
-            }}
-            placeholder="Enter value name"
-            value={newValueName}
-            onChangeText={setNewValueName}
-            onSubmitEditing={handleAddValue}
-          />
-          <TouchableOpacity
-            onPress={handleAddValue}
-            style={{
-              backgroundColor: '#007AFF',
-              paddingHorizontal: 20,
-              paddingVertical: 12,
-              borderRadius: 8,
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>Add</Text>
-          </TouchableOpacity>
-        </View>
+      {/* Add Value */}
+      <View style={{
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+      }}>
+        <TextInput
+          style={{
+            fontSize: 16,
+            color: '#111827',
+            paddingVertical: 8,
+            paddingHorizontal: 0,
+            borderWidth: 0,
+            backgroundColor: 'transparent',
+          }}
+          placeholder="Enter value name"
+          placeholderTextColor="#9CA3AF"
+          value={newValueName}
+          onChangeText={setNewValueName}
+          onSubmitEditing={handleAddValue}
+          returnKeyType="done"
+        />
       </View>
 
       {/* Values List */}
@@ -463,15 +446,35 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
         renderItem={renderValue}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
         ListEmptyComponent={() => (
-          <View style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ color: '#8E8E93', fontSize: 16 }}>
+          <View style={{
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 40,
+            paddingHorizontal: 20
+          }}>
+            <Text style={{
+              fontSize: 17,
+              color: '#8E8E93',
+              textAlign: 'center'
+            }}>
               No values in {currentGroup}
             </Text>
-            <Text style={{ color: '#8E8E93', fontSize: 14, marginTop: 4 }}>
+            <Text style={{
+              fontSize: 15,
+              color: '#C7C7CC',
+              marginTop: 4,
+              textAlign: 'center'
+            }}>
               Add values using the form above
             </Text>
-            <Text style={{ color: '#8E8E93', fontSize: 12, marginTop: 8 }}>
+            <Text style={{
+              fontSize: 13,
+              color: '#C7C7CC',
+              marginTop: 8,
+              textAlign: 'center'
+            }}>
               Total values: {values.length}
             </Text>
           </View>

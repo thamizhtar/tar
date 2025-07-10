@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Alert, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, FlatList, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { id } from '@instantdb/react-native';
@@ -15,6 +15,8 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
   const [showForm, setShowForm] = useState(false);
   const [editingCollection, setEditingCollection] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showActionDrawer, setShowActionDrawer] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState<any>(null);
 
   // Query collections with their products
   const { isLoading, error, data } = db.useQuery({
@@ -36,6 +38,7 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
   const handleEdit = (collection: any) => {
     setEditingCollection(collection);
     setShowForm(true);
+    setShowActionDrawer(false);
   };
 
   const handleFormClose = () => {
@@ -45,6 +48,11 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
 
   const handleFormSave = () => {
     // Refresh will happen automatically via InstantDB reactivity
+  };
+
+  const handleThreeDotsPress = (collection: any) => {
+    setSelectedCollection(collection);
+    setShowActionDrawer(true);
   };
 
   const handleDelete = (collection: any) => {
@@ -64,7 +72,10 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => db.transact(db.tx.collections[collection.id].delete()),
+          onPress: () => {
+            db.transact(db.tx.collections[collection.id].delete());
+            setShowActionDrawer(false);
+          },
         },
       ]
     );
@@ -75,6 +86,7 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
       isActive: !collection.isActive,
       updatedAt: getCurrentTimestamp(),
     }));
+    setShowActionDrawer(false);
   };
 
   if (isLoading) {
@@ -105,8 +117,8 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Search Bar - Exact match to image design */}
+    <View className="flex-1 bg-white">
+      {/* Search Bar - Clean minimal design */}
       <View className="bg-white border-b border-gray-200">
         <View className="px-4 pt-4 pb-4">
           <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
@@ -115,7 +127,7 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
 
             {/* Search Input */}
             <TextInput
-              placeholder="Search all items"
+              placeholder="Search collections"
               value={searchQuery}
               onChangeText={setSearchQuery}
               className="flex-1 text-base text-gray-900 ml-3 mr-3"
@@ -130,7 +142,7 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
         </View>
       </View>
 
-      {/* Collections List - Square POS Style */}
+      {/* Collections List - Minimal clean design */}
       <View className="flex-1">
         {filteredCollections.length === 0 ? (
           <View className="flex-1 justify-center items-center p-8">
@@ -147,173 +159,111 @@ export default function CollectionsScreen({ isGridView = false }: CollectionsScr
         ) : (
           <FlatList
             data={filteredCollections}
-            numColumns={isGridView ? 2 : 1}
-            key={isGridView ? 'grid' : 'list'} // Force re-render when layout changes
-            contentContainerStyle={{ padding: 16 }}
-            columnWrapperStyle={isGridView ? { justifyContent: 'space-between' } : undefined}
+            keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             renderItem={({ item: collection }) => (
               <TouchableOpacity
                 onPress={() => handleEdit(collection)}
-                className={`bg-white rounded-xl p-4 mb-4 shadow-sm border border-gray-100 ${
-                  isGridView ? '' : 'mx-0'
-                }`}
-                style={isGridView ? { width: '48%' } : { width: '100%' }}
+                className="bg-white border-b border-gray-100 px-4 py-4"
               >
-                {isGridView ? (
-                  // Grid View Layout
-                  <>
-                    {/* Collection Icon */}
-                    <View className="w-full h-20 bg-gray-100 rounded-lg mb-3 items-center justify-center">
-                      <Text className="text-2xl">📚</Text>
-                    </View>
-
-                    {/* Collection Info */}
-                    <Text className="text-base font-semibold text-gray-900 mb-1" numberOfLines={2}>
+                <View className="flex-row items-center">
+                  {/* Collection Info */}
+                  <View className="flex-1">
+                    <Text className="text-lg font-medium text-gray-900 mb-1" numberOfLines={1}>
                       {collection.name}
                     </Text>
-
-                    <View className={`px-2 py-1 rounded-full mb-2 self-start ${
-                      collection.isActive ? 'bg-green-100' : 'bg-gray-100'
-                    }`}>
-                      <Text className={`text-xs font-medium ${
-                        collection.isActive ? 'text-green-800' : 'text-gray-600'
-                      }`}>
-                        {collection.isActive ? 'Active' : 'Inactive'}
+                    {collection.description && (
+                      <Text className="text-gray-600 text-sm" numberOfLines={1}>
+                        {collection.description}
                       </Text>
-                    </View>
-
-                    <View className="bg-blue-50 px-2 py-1 rounded-lg mb-3 self-start">
-                      <Text className="text-blue-700 font-medium text-xs">
-                        {collection.products?.length || 0} Products
-                      </Text>
-                    </View>
-                  </>
-                ) : (
-                  // List View Layout
-                  <View className="flex-row items-center">
-                    {/* Collection Icon */}
-                    <View className="w-16 h-16 bg-gray-100 rounded-lg mr-4 items-center justify-center">
-                      <Text className="text-xl">📚</Text>
-                    </View>
-
-                    {/* Collection Info */}
-                    <View className="flex-1">
-                      <View className="flex-row items-center justify-between mb-1">
-                        <Text className="text-base font-semibold text-gray-900 flex-1" numberOfLines={1}>
-                          {collection.name}
-                        </Text>
-                        <View className={`px-2 py-1 rounded-full ml-2 ${
-                          collection.isActive ? 'bg-green-100' : 'bg-gray-100'
-                        }`}>
-                          <Text className={`text-xs font-medium ${
-                            collection.isActive ? 'text-green-800' : 'text-gray-600'
-                          }`}>
-                            {collection.isActive ? 'Active' : 'Inactive'}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {collection.description && (
-                        <Text className="text-gray-600 mb-1 text-sm" numberOfLines={1}>
-                          {collection.description}
-                        </Text>
-                      )}
-
-                      <View className="bg-blue-50 px-2 py-1 rounded-lg self-start">
-                        <Text className="text-blue-700 font-medium text-xs">
-                          {collection.products?.length || 0} Products
-                        </Text>
-                      </View>
-                    </View>
+                    )}
                   </View>
-                )}
 
-                {/* Action Buttons */}
-                {isGridView ? (
-                  // Grid View Action Buttons (vertical)
-                  <View className="gap-2 pt-3 border-t border-gray-100">
-                    <View className="flex-row gap-2">
-                      <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          toggleStatus(collection);
-                        }}
-                        className={`flex-1 py-2 rounded-lg items-center ${
-                          collection.isActive ? 'bg-orange-50' : 'bg-green-50'
-                        }`}
-                      >
-                        <Text className={`font-medium text-sm ${
-                          collection.isActive ? 'text-orange-600' : 'text-green-600'
-                        }`}>
-                          {collection.isActive ? 'Disable' : 'Enable'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleEdit(collection);
-                        }}
-                        className="flex-1 bg-blue-50 py-2 rounded-lg items-center"
-                      >
-                        <Text className="text-blue-600 font-medium text-sm">Edit</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDelete(collection);
-                      }}
-                      className="bg-red-50 py-2 rounded-lg items-center"
-                    >
-                      <Text className="text-red-600 font-medium text-sm">Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  // List View Action Buttons (horizontal)
-                  <View className="flex-row gap-2 pt-3 border-t border-gray-100">
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        toggleStatus(collection);
-                      }}
-                      className={`flex-1 py-2 rounded-lg items-center ${
-                        collection.isActive ? 'bg-orange-50' : 'bg-green-50'
-                      }`}
-                    >
-                      <Text className={`font-medium text-sm ${
-                        collection.isActive ? 'text-orange-600' : 'text-green-600'
-                      }`}>
-                        {collection.isActive ? 'Disable' : 'Enable'}
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleEdit(collection);
-                      }}
-                      className="flex-1 bg-blue-50 py-2 rounded-lg items-center"
-                    >
-                      <Text className="text-blue-600 font-medium text-sm">Edit</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDelete(collection);
-                      }}
-                      className="flex-1 bg-red-50 py-2 rounded-lg items-center"
-                    >
-                      <Text className="text-red-600 font-medium text-sm">Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                  {/* Three dots menu */}
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleThreeDotsPress(collection);
+                    }}
+                    className="p-2 ml-2"
+                  >
+                    <Feather name="more-horizontal" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
               </TouchableOpacity>
             )}
           />
         )}
       </View>
+
+      {/* Bottom Action Drawer */}
+      <Modal
+        visible={showActionDrawer}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowActionDrawer(false)}
+      >
+        <TouchableOpacity
+          style={{
+            flex: 1,
+            backgroundColor: 'transparent',
+            justifyContent: 'flex-end',
+          }}
+          activeOpacity={1}
+          onPress={() => setShowActionDrawer(false)}
+        >
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#fff',
+              width: '100%',
+              paddingBottom: insets.bottom,
+              borderTopWidth: 1,
+              borderTopColor: '#E5E7EB',
+            }}
+            activeOpacity={1}
+          >
+            {/* Action Options */}
+            <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+              {/* Disable/Enable Option */}
+              <TouchableOpacity
+                onPress={() => selectedCollection && toggleStatus(selectedCollection)}
+                style={{
+                  paddingVertical: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                }}
+              >
+                <Text style={{ fontSize: 16, color: '#111827' }}>
+                  {selectedCollection?.isActive ? 'Disable' : 'Enable'}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Edit Option */}
+              <TouchableOpacity
+                onPress={() => selectedCollection && handleEdit(selectedCollection)}
+                style={{
+                  paddingVertical: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                }}
+              >
+                <Text style={{ fontSize: 16, color: '#3B82F6' }}>Edit</Text>
+              </TouchableOpacity>
+
+              {/* Delete Option */}
+              <TouchableOpacity
+                onPress={() => selectedCollection && handleDelete(selectedCollection)}
+                style={{
+                  paddingVertical: 16,
+                  marginBottom: 16,
+                }}
+              >
+                <Text style={{ fontSize: 16, color: '#EF4444' }}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }

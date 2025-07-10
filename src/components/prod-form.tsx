@@ -42,6 +42,7 @@ import TagSelect from './tag-select';
 import Metafields from './metafields';
 import { log, trackError, PerformanceMonitor } from '../lib/logger';
 import ErrorBoundary from './ui/error-boundary';
+import OptionValuesSelector from '../screens/option-values-selector';
 
 interface ProductFormScreenProps {
   product?: any;
@@ -191,6 +192,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showFullScreenNotesEditor, setShowFullScreenNotesEditor] = useState(false);
   const [showOptionSetSelector, setShowOptionSetSelector] = useState(false);
   const [selectedOptionSets, setSelectedOptionSets] = useState<string[]>([]);
+  const [showOptionValuesSelector, setShowOptionValuesSelector] = useState(false);
+  const [currentOptionSet, setCurrentOptionSet] = useState<any>(null);
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [showPrimaryImageActions, setShowPrimaryImageActions] = useState(false);
   const [showMetafields, setShowMetafields] = useState(false);
@@ -517,9 +520,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
         // Create SKU from combination values
         const skuParts = combination.map(option =>
-          option.value?.toUpperCase().replace(/\s+/g, '-') || `OPT${index}`
+          option.name?.toUpperCase().replace(/\s+/g, '-') || `OPT${index}`
         );
-        const itemSku = `${formData.sku || 'ITEM'}-${skuParts.join('-')}`;
+        const productPrefix = formData.title?.toUpperCase().replace(/\s+/g, '-') || formData.sku || 'ITEM';
+        const itemSku = `${productPrefix}-${skuParts.join('-')}`;
 
         // Create item data with up to 3 options
         const itemData: any = {
@@ -537,9 +541,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         };
 
         // Assign option values to option1, option2, option3
-        if (combination[0]) itemData.option1 = combination[0].value;
-        if (combination[1]) itemData.option2 = combination[1].value;
-        if (combination[2]) itemData.option3 = combination[2].value;
+        if (combination[0]) itemData.option1 = combination[0].name;
+        if (combination[1]) itemData.option2 = combination[1].name;
+        if (combination[2]) itemData.option3 = combination[2].name;
 
         return db.transact(db.tx.items[itemId].update(itemData));
       });
@@ -550,6 +554,118 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       Alert.alert('Success', `Generated ${combinations.length} item variants from option sets: ${setNames}`);
       setShowOptionSetSelector(false);
       setSelectedOptionSets([]);
+
+    } catch (error) {
+      console.error('Failed to generate items:', error);
+      Alert.alert('Error', 'Failed to generate items. Please try again.');
+    }
+  };
+
+  const generateItemsFromSelectedValues = async (selectedValues: any[], optionSetData: any) => {
+    if (!product?.id || !currentStore?.id) {
+      Alert.alert('Error', 'Product must be saved before generating items');
+      return;
+    }
+
+    if (selectedValues.length === 0) {
+      Alert.alert('Error', 'Please select at least one option value');
+      return;
+    }
+
+    try {
+      // First, delete all existing items for this product
+      const existingItems = productItemsData?.items || [];
+      if (existingItems.length > 0) {
+        const deletePromises = existingItems.map((item: any) =>
+          db.transact(db.tx.items[item.id].delete())
+        );
+        await Promise.all(deletePromises);
+      }
+
+      // Group selected values by their group field
+      const groupMap = new Map<string, any[]>();
+      selectedValues.forEach((value: any) => {
+        const group = value.group || 'Group 1';
+        if (!groupMap.has(group)) {
+          groupMap.set(group, []);
+        }
+        groupMap.get(group)!.push(value);
+      });
+
+      // Convert groups to arrays for combination generation
+      const optionArrays = Array.from(groupMap.values());
+
+      // Generate all possible combinations
+      const generateCombinations = (arrays: any[][]): any[][] => {
+        if (arrays.length === 0) return [[]];
+        if (arrays.length === 1) return arrays[0].map(item => [item]);
+
+        const result: any[][] = [];
+        const firstArray = arrays[0];
+        const restCombinations = generateCombinations(arrays.slice(1));
+
+        firstArray.forEach(firstItem => {
+          restCombinations.forEach(restCombination => {
+            result.push([firstItem, ...restCombination]);
+          });
+        });
+
+        return result;
+      };
+
+      const combinations = generateCombinations(optionArrays);
+
+      // Generate items for each combination
+      const itemPromises = combinations.map(async (combination: any[], index: number) => {
+        const itemId = id();
+
+        // Create SKU from combination values
+        const skuParts = combination.map(option =>
+          option.name?.toUpperCase().replace(/\s+/g, '-') || `OPT${index}`
+        );
+        const productPrefix = formData.title?.toUpperCase().replace(/\s+/g, '-') || formData.sku || 'ITEM';
+        const itemSku = `${productPrefix}-${skuParts.join('-')}`;
+
+        // Create item data with up to 3 options
+        const itemData: any = {
+          productId: product.id,
+          storeId: currentStore.id,
+          sku: itemSku,
+          price: formData.price || 0,
+          saleprice: formData.saleprice || 0,
+          cost: formData.cost || 0,
+          available: 0,
+          onhand: 0,
+          committed: 0,
+          unavailable: 0,
+          reorderlevel: 0,
+        };
+
+        // Assign option values to option1, option2, option3
+        if (combination[0]) itemData.option1 = combination[0].name;
+        if (combination[1]) itemData.option2 = combination[1].name;
+        if (combination[2]) itemData.option3 = combination[2].name;
+
+        return db.transact(db.tx.items[itemId].update(itemData));
+      });
+
+      await Promise.all(itemPromises);
+
+      // Update product options field for storefront display
+      const productOptionsData = {
+        optionSets: [optionSetData]
+      };
+
+      await db.transact(
+        db.tx.products[product.id].update({
+          options: JSON.stringify(productOptionsData)
+        })
+      );
+
+      Alert.alert('Success', `Generated ${combinations.length} item variants from ${optionSetData.name}`);
+      setShowOptionValuesSelector(false);
+      setCurrentOptionSet(null);
+      setShowOptionSetSelector(false);
 
     } catch (error) {
       console.error('Failed to generate items:', error);
@@ -2192,58 +2308,22 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         presentationStyle="pageSheet"
         onRequestClose={() => setShowOptionSetSelector(false)}
       >
-        <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
           {/* Header */}
           <View style={{
-            paddingTop: insets.top,
+            paddingTop: insets.top + 16,
             paddingBottom: 16,
             paddingHorizontal: 20,
             backgroundColor: '#fff',
-            borderBottomWidth: 1,
-            borderBottomColor: '#E5E7EB',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
           }}>
-            <TouchableOpacity
-              onPress={() => setShowOptionSetSelector(false)}
-              style={{ padding: 8, marginLeft: -8 }}
-            >
-              <MaterialIcons name="close" size={24} color="#6B7280" />
-            </TouchableOpacity>
-
             <Text style={{
               fontSize: 18,
               fontWeight: '600',
               color: '#111827',
-              flex: 1,
-              textAlign: 'center',
-              marginHorizontal: 16,
+              textAlign: 'left',
             }}>
               Select Option Sets
             </Text>
-
-            <TouchableOpacity
-              onPress={() => {
-                if (selectedOptionSets.length > 0) {
-                  generateItemsFromOptionSets(selectedOptionSets);
-                } else {
-                  Alert.alert('Error', 'Please select at least one option set');
-                }
-              }}
-              style={{
-                padding: 8,
-                marginRight: -8,
-              }}
-            >
-              <Text style={{
-                fontSize: 17,
-                fontWeight: '600',
-                color: selectedOptionSets.length > 0 ? '#007AFF' : '#9CA3AF',
-              }}>
-                Generate
-              </Text>
-            </TouchableOpacity>
           </View>
 
           {/* Content */}
@@ -2301,103 +2381,29 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               }
 
               return optionSets.map((optionSet) => {
-                const isSelected = selectedOptionSets.includes(optionSet.id);
-
                 return (
                   <TouchableOpacity
                     key={optionSet.name}
                     style={{
-                      backgroundColor: isSelected ? '#F0F9FF' : '#fff',
-                      borderRadius: 12,
-                      padding: 20,
-                      marginBottom: 16,
-                      borderWidth: 2,
-                      borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
+                      backgroundColor: '#fff',
+                      paddingVertical: 16,
+                      paddingHorizontal: 20,
+                      borderBottomWidth: 1,
+                      borderBottomColor: '#F3F4F6',
                     }}
                     onPress={() => {
-                      if (isSelected) {
-                        // Remove from selection
-                        setSelectedOptionSets(prev => prev.filter(id => id !== optionSet.id));
-                      } else {
-                        // Add to selection (limit to 3 for option1, option2, option3)
-                        if (selectedOptionSets.length < 3) {
-                          setSelectedOptionSets(prev => [...prev, optionSet.id]);
-                        } else {
-                          Alert.alert('Limit Reached', 'You can select up to 3 option sets maximum');
-                        }
-                      }
+                      setCurrentOptionSet(optionSet);
+                      setShowOptionValuesSelector(true);
                     }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                       <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
-                            {optionSet.name}
-                          </Text>
-                          {isSelected && (
-                            <View style={{
-                              backgroundColor: '#3B82F6',
-                              borderRadius: 10,
-                              width: 20,
-                              height: 20,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginLeft: 8,
-                            }}>
-                              <Text style={{ color: '#fff', fontSize: 12, fontWeight: 'bold' }}>
-                                {selectedOptionSets.indexOf(optionSet.id) + 1}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+                        <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>
+                          {optionSet.name}
+                        </Text>
+                        <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
                           {optionSet.values.length} {optionSet.values.length === 1 ? 'variant' : 'variants'}
                         </Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
-                          {optionSet.values.slice(0, 3).map((value: any) => (
-                            <View
-                              key={value.id}
-                              style={{
-                                backgroundColor: isSelected ? '#DBEAFE' : '#F3F4F6',
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                                borderRadius: 6,
-                                marginRight: 8,
-                                marginBottom: 4,
-                              }}
-                            >
-                              <Text style={{ fontSize: 12, color: isSelected ? '#1E40AF' : '#6B7280' }}>
-                                {value.value}
-                              </Text>
-                            </View>
-                          ))}
-                          {optionSet.values.length > 3 && (
-                            <View style={{
-                              backgroundColor: isSelected ? '#DBEAFE' : '#F3F4F6',
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 6,
-                            }}>
-                              <Text style={{ fontSize: 12, color: isSelected ? '#1E40AF' : '#6B7280' }}>
-                                +{optionSet.values.length - 3} more
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                      <View style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        borderWidth: 2,
-                        borderColor: isSelected ? '#3B82F6' : '#D1D5DB',
-                        backgroundColor: isSelected ? '#3B82F6' : 'transparent',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}>
-                        {isSelected && (
-                          <MaterialIcons name="check" size={16} color="#fff" />
-                        )}
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -2633,6 +2639,17 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Option Values Selector */}
+      <OptionValuesSelector
+        visible={showOptionValuesSelector}
+        optionSet={currentOptionSet}
+        onClose={() => {
+          setShowOptionValuesSelector(false);
+          setCurrentOptionSet(null);
+        }}
+        onGenerate={generateItemsFromSelectedValues}
+      />
 
     </View>
   );

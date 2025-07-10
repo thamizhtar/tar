@@ -139,49 +139,33 @@ export default function GroupManager({ currentGroup, onGroupSelect, storeId, onG
 
   const renderGroupTab = (group: string, index: number) => {
     const isSelected = currentGroup === group;
-    
+
     return (
-      <View key={index} style={{ flex: 1, marginHorizontal: 2 }}>
+      <View key={index} style={{ flex: 1 }}>
         <TouchableOpacity
           onPress={() => onGroupSelect(group)}
+          onLongPress={() => handleEditGroup(index)}
           style={{
-            paddingVertical: 12,
-            paddingHorizontal: 8,
-            backgroundColor: isSelected ? '#007AFF' : 'white',
-            borderWidth: 1,
-            borderColor: isSelected ? '#007AFF' : '#E5E5EA',
-            borderRadius: 8,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            backgroundColor: '#fff',
+            borderBottomWidth: isSelected ? 2 : 1,
+            borderBottomColor: isSelected ? '#007AFF' : '#E5E7EB',
             alignItems: 'center',
-            flexDirection: 'row',
             justifyContent: 'center',
           }}
         >
-          <Text 
+          <Text
             style={{
-              fontSize: 14,
-              fontWeight: '500',
-              color: isSelected ? 'white' : '#1C1C1E',
+              fontSize: 16,
+              fontWeight: isSelected ? '600' : '400',
+              color: isSelected ? '#007AFF' : '#8E8E93',
               textAlign: 'center',
-              flex: 1,
             }}
             numberOfLines={1}
           >
             {group}
           </Text>
-          
-          <TouchableOpacity
-            onPress={() => handleEditGroup(index)}
-            style={{
-              marginLeft: 4,
-              padding: 2,
-            }}
-          >
-            <MaterialIcons 
-              name="edit" 
-              size={16} 
-              color={isSelected ? 'white' : '#8E8E93'} 
-            />
-          </TouchableOpacity>
         </TouchableOpacity>
       </View>
     );
@@ -189,18 +173,8 @@ export default function GroupManager({ currentGroup, onGroupSelect, storeId, onG
 
   return (
     <View>
-      <Text style={{
-        fontSize: 16,
-        fontWeight: '500',
-        color: '#1C1C1E',
-        marginBottom: 8,
-      }}>
-        Group
-      </Text>
-      
       <View style={{
         flexDirection: 'row',
-        gap: 4,
       }}>
         {groups.map((group, index) => renderGroupTab(group, index))}
       </View>
@@ -220,7 +194,7 @@ export default function GroupManager({ currentGroup, onGroupSelect, storeId, onG
           paddingHorizontal: 40,
         }}>
           <View style={{
-            backgroundColor: 'white',
+            backgroundColor: '#fff',
             borderRadius: 12,
             padding: 24,
             width: '100%',
@@ -229,7 +203,7 @@ export default function GroupManager({ currentGroup, onGroupSelect, storeId, onG
             <Text style={{
               fontSize: 18,
               fontWeight: '600',
-              color: '#1C1C1E',
+              color: '#111827',
               marginBottom: 16,
               textAlign: 'center',
             }}>
@@ -238,21 +212,24 @@ export default function GroupManager({ currentGroup, onGroupSelect, storeId, onG
             
             <TextInput
               style={{
-                backgroundColor: '#F2F2F7',
+                backgroundColor: '#F9FAFB',
+                borderWidth: 1,
+                borderColor: '#E5E7EB',
                 borderRadius: 8,
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 fontSize: 16,
-                color: '#1C1C1E',
+                color: '#111827',
                 marginBottom: 20,
               }}
               placeholder="Enter group name"
+              placeholderTextColor="#9CA3AF"
               value={editingName}
               onChangeText={setEditingName}
               maxLength={20}
               autoFocus={true}
             />
-            
+
             <View style={{
               flexDirection: 'row',
               gap: 12,
@@ -262,7 +239,7 @@ export default function GroupManager({ currentGroup, onGroupSelect, storeId, onG
                 style={{
                   flex: 1,
                   paddingVertical: 12,
-                  backgroundColor: '#F2F2F7',
+                  backgroundColor: '#F3F4F6',
                   borderRadius: 8,
                   alignItems: 'center',
                 }}
@@ -270,18 +247,18 @@ export default function GroupManager({ currentGroup, onGroupSelect, storeId, onG
                 <Text style={{
                   fontSize: 16,
                   fontWeight: '500',
-                  color: '#1C1C1E',
+                  color: '#6B7280',
                 }}>
                   Cancel
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 onPress={handleSaveEdit}
                 style={{
                   flex: 1,
                   paddingVertical: 12,
-                  backgroundColor: '#007AFF',
+                  backgroundColor: '#3B82F6',
                   borderRadius: 8,
                   alignItems: 'center',
                 }}
