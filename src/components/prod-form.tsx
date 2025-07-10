@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Alert, TextInput, BackHandler, Modal, Animated, ScrollView, Keyboard, Platform, KeyboardAvoidingView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { id } from '@instantdb/react-native';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 
 
@@ -92,19 +92,21 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     } : {}
   );
 
-  // Query metafield definitions for the current store
+  // Query metafield definitions for products
   const { data: metafieldDefinitionsData } = db.useQuery(
     currentStore?.id ? {
-      metafields: {
+      metafieldSets: {
         $: {
           where: {
             storeId: currentStore.id,
-            parentid: 'metafield-definitions'
+            category: 'products'
           }
         }
       }
     } : {}
   );
+
+
 
 
 
@@ -197,9 +199,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [showPrimaryImageActions, setShowPrimaryImageActions] = useState(false);
   const [showMetafields, setShowMetafields] = useState(false);
-  const [selectedMetafieldGroup, setSelectedMetafieldGroup] = useState<string>('');
+  const [selectedMetafieldIds, setSelectedMetafieldIds] = useState<string[]>([]);
+  const [showMetafieldSelector, setShowMetafieldSelector] = useState(false);
   const [metafieldValues, setMetafieldValues] = useState<Record<string, any>>({});
-  const [showMetafieldGroupSelector, setShowMetafieldGroupSelector] = useState(false);
+  const [showMetafieldValueEditor, setShowMetafieldValueEditor] = useState(false);
+  const [currentEditingField, setCurrentEditingField] = useState<any>(null);
+  const [tempFieldValue, setTempFieldValue] = useState('');
 
   // Items search and filter states
   const [itemsSearchQuery, setItemsSearchQuery] = useState('');
@@ -261,31 +266,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     // Only set hasChanges when user actually makes changes via updateField
   }, [selectedCollectionId, productCollection?.id, isEditing]);
 
-  // Initialize metafield values from product data
-  useEffect(() => {
-    if (product?.metafields && metafieldDefinitionsData?.metafields) {
-      const values: Record<string, any> = {};
-      let selectedGroup = '';
 
-      // product.metafields is an object with field titles as keys
-      Object.entries(product.metafields).forEach(([fieldTitle, fieldData]: [string, any]) => {
-        if (fieldData?.value !== undefined) {
-          values[fieldTitle] = fieldData.value;
-
-          // Find the group for this field (use the first group found)
-          if (!selectedGroup) {
-            const definition = metafieldDefinitionsData.metafields.find((def: any) => def.title === fieldTitle);
-            if (definition?.group) {
-              selectedGroup = definition.group;
-            }
-          }
-        }
-      });
-
-      setMetafieldValues(values);
-      setSelectedMetafieldGroup(selectedGroup);
-    }
-  }, [product?.metafields, metafieldDefinitionsData]);
 
 
 
@@ -304,6 +285,32 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     return () => backHandler.remove();
   }, [hasChanges, onClose]);
 
+  // Initialize metafield values and selected fields from product data
+  useEffect(() => {
+    if (product?.metafields && metafieldDefinitionsData?.metafieldSets) {
+      const values: Record<string, any> = {};
+      const selectedIds: string[] = [];
+
+      // Extract values from product metafields
+      Object.entries(product.metafields).forEach(([fieldName, fieldData]: [string, any]) => {
+        if (fieldData?.value !== undefined) {
+          values[fieldName] = fieldData.value;
+
+          // Find the field definition and add its ID to selected
+          const definition = metafieldDefinitionsData.metafieldSets.find((def: any) =>
+            (def.name || def.title) === fieldName
+          );
+          if (definition?.id && !selectedIds.includes(definition.id)) {
+            selectedIds.push(definition.id);
+          }
+        }
+      });
+
+      setMetafieldValues(values);
+      setSelectedMetafieldIds(selectedIds);
+    }
+  }, [product?.metafields, metafieldDefinitionsData]);
+
   // Function to check if there are actual changes
   const checkForChanges = (newFormData: any) => {
     if (!product) {
@@ -316,8 +323,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                         newFormData.category.trim() ||
                         newFormData.price.trim() ||
                         newFormData.sku.trim() ||
-                        (newFormData.tags && newFormData.tags.length > 0) ||
-                        selectedMetafieldGroup.length > 0;
+                        (newFormData.tags && newFormData.tags.length > 0);
       return !!hasContent;
     }
 
@@ -357,29 +363,28 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
     // Check if metafields have changed
     const originalMetafields = product?.metafields || {};
-    const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
-
-    // Get original group (first group found)
-    let originalGroup = '';
-    Object.entries(originalMetafields).forEach(([fieldTitle, fieldData]: [string, any]) => {
-      if (!originalGroup) {
-        const definition = metafieldDefinitions.find((def: any) => def.title === fieldTitle);
-        if (definition?.group) {
-          originalGroup = definition.group;
-        }
-      }
-    });
-
+    const originalIds: string[] = [];
     const originalValues: Record<string, any> = {};
-    Object.entries(originalMetafields).forEach(([fieldTitle, fieldData]: [string, any]) => {
-      if (fieldData?.value !== undefined) {
-        originalValues[fieldTitle] = fieldData.value;
-      }
-    });
+
+    // Extract original field IDs and values
+    if (metafieldDefinitionsData?.metafieldSets) {
+      Object.entries(originalMetafields).forEach(([fieldName, fieldData]: [string, any]) => {
+        if (fieldData?.value !== undefined) {
+          originalValues[fieldName] = fieldData.value;
+          const definition = metafieldDefinitionsData.metafieldSets.find((def: any) =>
+            (def.name || def.title) === fieldName
+          );
+          if (definition?.id && !originalIds.includes(definition.id)) {
+            originalIds.push(definition.id);
+          }
+        }
+      });
+    }
 
     const metafieldsChanged =
-      originalGroup !== selectedMetafieldGroup ||
-      Object.keys(metafieldValues).some(key => metafieldValues[key] !== originalValues[key]);
+      JSON.stringify(originalIds.sort()) !== JSON.stringify(selectedMetafieldIds.sort()) ||
+      Object.keys(metafieldValues).some(key => metafieldValues[key] !== originalValues[key]) ||
+      Object.keys(originalValues).some(key => originalValues[key] !== metafieldValues[key]);
 
     return fieldChanged || metafieldsChanged;
   };
@@ -404,29 +409,33 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     updateField('options', optionsData);
   };
 
-  const handleMetafieldGroupSelection = (groupName: string) => {
-    if (selectedMetafieldGroup === groupName) {
-      // Deselect current group
-      setSelectedMetafieldGroup('');
-      // Clear all metafield values
-      setMetafieldValues({});
+  const handleMetafieldSelection = (fieldId: string) => {
+    if (selectedMetafieldIds.includes(fieldId)) {
+      // Remove field
+      setSelectedMetafieldIds(prev => prev.filter(id => id !== fieldId));
     } else {
-      // Select new group
-      setSelectedMetafieldGroup(groupName);
-      // Clear previous values and initialize with default values for new group
-      const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
-      const fieldsInGroup = metafieldDefinitions.filter((def: any) =>
-        def.group === groupName && def.title !== '__GROUP_PLACEHOLDER__'
-      );
+      // Add field
+      setSelectedMetafieldIds(prev => [...prev, fieldId]);
 
-      const newValues: Record<string, any> = {};
-      fieldsInGroup.forEach((field: any) => {
-        newValues[field.title] = field.value || '';
-      });
-      setMetafieldValues(newValues);
+      // Initialize default value for newly selected field
+      if (metafieldDefinitionsData?.metafieldSets) {
+        const field = metafieldDefinitionsData.metafieldSets.find((def: any) => def.id === fieldId);
+        if (field) {
+          const fieldName = field.name || field.title;
+          if (!metafieldValues[fieldName]) {
+            setMetafieldValues(prev => ({
+              ...prev,
+              [fieldName]: ''
+            }));
+          }
+        }
+      }
     }
+
     setHasChanges(true);
   };
+
+
 
 
 
@@ -870,7 +879,30 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (formData.brand) productData.brand = formData.brand.trim();
       if (formData.options) productData.options = formData.options;
       if (formData.modifiers) productData.modifiers = formData.modifiers;
-      if (formData.metafields) productData.metafields = formData.metafields;
+      // Handle metafields - build metafields object from selected fields and values
+      if (selectedMetafieldIds.length > 0 && metafieldDefinitionsData?.metafieldSets) {
+        const metafieldData: Record<string, any> = {};
+
+        const selectedFields = metafieldDefinitionsData.metafieldSets.filter((def: any) =>
+          selectedMetafieldIds.includes(def.id)
+        );
+
+        selectedFields.forEach((field: any) => {
+          const fieldName = field.name || field.title;
+          const value = metafieldValues[fieldName];
+          if (value !== undefined && value !== '') {
+            metafieldData[fieldName] = {
+              value: value.toString(),
+              type: field.type,
+              group: field.group
+            };
+          }
+        });
+
+        if (Object.keys(metafieldData).length > 0) {
+          productData.metafields = metafieldData;
+        }
+      }
       if (formData.saleinfo) productData.saleinfo = formData.saleinfo;
       if (formData.stores) productData.stores = formData.stores;
 
@@ -896,32 +928,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (formData.relproducts) productData.relproducts = formData.relproducts;
       if (formData.sellproducts) productData.sellproducts = formData.sellproducts;
 
-      // Handle metafield values - save directly to product's metafields field
-      const metafieldData: Record<string, any> = {};
-      if (selectedMetafieldGroup) {
-        const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
-        const fieldsFromSelectedGroup = metafieldDefinitions.filter((def: any) =>
-          def.group === selectedMetafieldGroup &&
-          def.title !== '__GROUP_PLACEHOLDER__'
-        );
 
-        // Build metafield data object
-        fieldsFromSelectedGroup.forEach((field: any) => {
-          const value = metafieldValues[field.title] || '';
-          if (value) {
-            metafieldData[field.title] = {
-              value: value.toString(),
-              type: field.type,
-              group: field.group
-            };
-          }
-        });
-      }
-
-      // Add metafields to product data
-      if (Object.keys(metafieldData).length > 0) {
-        productData.metafields = metafieldData;
-      }
 
       let productId: string;
 
@@ -1211,7 +1218,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
               marginHorizontal: 0,
               borderTopWidth: 0
             }}>
-              {/* First Card - Metafield Group Selector */}
+              {/* Metafield Group Selector */}
               <TouchableOpacity
                 style={{
                   backgroundColor: '#fff',
@@ -1224,18 +1231,72 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   alignItems: 'center',
                   justifyContent: 'space-between',
                 }}
-                onPress={() => setShowMetafields(true)}
+                onPress={() => setShowMetafieldSelector(true)}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Metafields</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Select Metafields</Text>
                   <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
-                    Manage custom data for this product
+                    {selectedMetafieldIds.length > 0
+                      ? `${selectedMetafieldIds.length} field${selectedMetafieldIds.length !== 1 ? 's' : ''} selected`
+                      : 'Choose metafields'
+                    }
                   </Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={20} color="#C7C7CC" />
               </TouchableOpacity>
 
+              {/* Selected Metafields */}
+              {selectedMetafieldIds.length > 0 && metafieldDefinitionsData?.metafieldSets && (
+                <View>
+                  {(() => {
+                    // Get selected fields by ID
+                    const allSelectedFields = metafieldDefinitionsData.metafieldSets.filter((def: any) =>
+                      selectedMetafieldIds.includes(def.id)
+                    );
 
+                    return allSelectedFields.map((field: any) => {
+                      const fieldName = field.name || field.title || 'Untitled Field';
+
+                      return (
+                        <TouchableOpacity
+                          key={field.id}
+                          style={{
+                            backgroundColor: '#fff',
+                            borderBottomWidth: 1,
+                            borderBottomColor: '#E5E7EB',
+                            paddingVertical: 16,
+                            paddingHorizontal: 16,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                          onPress={() => {
+                            setCurrentEditingField(field);
+                            setTempFieldValue(metafieldValues[fieldName] || '');
+                            setShowMetafieldValueEditor(true);
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: 16,
+                            fontWeight: '400',
+                            color: '#111827',
+                            flex: 1,
+                          }}>
+                            {fieldName}
+                          </Text>
+                          <Text style={{
+                            fontSize: 16,
+                            color: metafieldValues[fieldName] ? '#111827' : '#9CA3AF',
+                            textAlign: 'right',
+                          }}>
+                            {metafieldValues[fieldName] || 'value'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    });
+                  })()}
+                </View>
+              )}
             </View>
           </View>
         </TabContent>
@@ -2522,12 +2583,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         />
       </Modal>
 
-      {/* Metafield Group Selector Modal */}
+      {/* Metafield Selector Modal */}
       <Modal
-        visible={showMetafieldGroupSelector}
+        visible={showMetafieldSelector}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowMetafieldGroupSelector(false)}
+        onRequestClose={() => setShowMetafieldSelector(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#fff' }}>
           {/* Header */}
@@ -2548,7 +2609,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 Select Metafields
               </Text>
               <TouchableOpacity
-                onPress={() => setShowMetafieldGroupSelector(false)}
+                onPress={() => setShowMetafieldSelector(false)}
                 style={{ padding: 4 }}
               >
                 <Text style={{ fontSize: 16, color: '#3B82F6', fontWeight: '500' }}>
@@ -2561,9 +2622,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
           {/* Content */}
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
             {(() => {
-              const metafieldDefinitions = metafieldDefinitionsData?.metafields || [];
-
-              if (metafieldDefinitions.length === 0) {
+              if (!metafieldDefinitionsData?.metafieldSets || metafieldDefinitionsData.metafieldSets.length === 0) {
                 return (
                   <View style={{
                     flex: 1,
@@ -2595,69 +2654,216 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 );
               }
 
-              // Get unique groups, excluding placeholders
+              // Get unique groups
               const groups = [...new Set(
-                metafieldDefinitions
-                  .filter((def: any) => def.title !== '__GROUP_PLACEHOLDER__')
-                  .map((def: any) => def.group)
+                metafieldDefinitionsData.metafieldSets.map((def: any) => def.group)
               )].sort();
 
               return groups.map((groupName: string) => {
-                const isSelected = selectedMetafieldGroup === groupName;
-                const fieldsInGroup = metafieldDefinitions.filter((def: any) =>
-                  def.group === groupName && def.title !== '__GROUP_PLACEHOLDER__'
-                );
+                const fieldsInGroup = metafieldDefinitionsData.metafieldSets.filter((def: any) => def.group === groupName);
 
                 return (
-                  <TouchableOpacity
-                    key={groupName}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: 16,
-                      paddingHorizontal: 16,
-                      backgroundColor: '#fff',
-                      borderBottomWidth: 1,
-                      borderBottomColor: '#F3F4F6',
-                    }}
-                    onPress={() => handleMetafieldGroupSelection(groupName)}
-                  >
+                  <View key={groupName}>
+                    {/* Group Header */}
                     <View style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      borderWidth: 2,
-                      borderColor: isSelected ? '#3B82F6' : '#D1D5DB',
-                      backgroundColor: isSelected ? '#3B82F6' : 'transparent',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 12,
+                      backgroundColor: '#F9FAFB',
+                      paddingVertical: 12,
+                      paddingHorizontal: 16,
+                      borderBottomWidth: 1,
+                      borderBottomColor: '#E5E7EB',
                     }}>
-                      {isSelected && (
-                        <MaterialIcons name="check" size={12} color="#fff" />
-                      )}
-                    </View>
-                    <View style={{ flex: 1 }}>
                       <Text style={{
-                        fontSize: 16,
-                        fontWeight: '500',
-                        color: '#111827',
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: '#374151',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
                       }}>
                         {groupName}
                       </Text>
-                      <Text style={{
-                        fontSize: 14,
-                        color: '#6B7280',
-                        marginTop: 2,
-                      }}>
-                        {fieldsInGroup.length} field{fieldsInGroup.length !== 1 ? 's' : ''}
-                      </Text>
                     </View>
-                  </TouchableOpacity>
+
+                    {/* Fields in Group */}
+                    {fieldsInGroup.map((field: any) => {
+                      const isSelected = selectedMetafieldIds.includes(field.id);
+
+                      return (
+                        <TouchableOpacity
+                          key={field.id}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            paddingVertical: 16,
+                            paddingHorizontal: 16,
+                            backgroundColor: '#fff',
+                            borderBottomWidth: 1,
+                            borderBottomColor: '#F3F4F6',
+                          }}
+                          onPress={() => handleMetafieldSelection(field.id)}
+                        >
+                          <View style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: 10,
+                            borderWidth: 2,
+                            borderColor: isSelected ? '#3B82F6' : '#D1D5DB',
+                            backgroundColor: isSelected ? '#3B82F6' : 'transparent',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: 12,
+                          }}>
+                            {isSelected && (
+                              <MaterialIcons name="check" size={12} color="#fff" />
+                            )}
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{
+                              fontSize: 16,
+                              fontWeight: '400',
+                              color: '#111827',
+                            }}>
+                              {field.name || field.title || 'Untitled Field'}
+                            </Text>
+                            <Text style={{
+                              fontSize: 14,
+                              color: '#6B7280',
+                              marginTop: 2,
+                            }}>
+                              {field.type.replace(/_/g, ' ')}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 );
               });
             })()}
           </ScrollView>
+        </View>
+      </Modal>
+
+      {/* Metafield Value Editor Modal */}
+      <Modal
+        visible={showMetafieldValueEditor}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowMetafieldValueEditor(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+          {/* Header */}
+          <View style={{
+            paddingTop: insets.top,
+            backgroundColor: '#fff',
+            borderBottomWidth: 1,
+            borderBottomColor: '#E5E7EB',
+          }}>
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              paddingVertical: 16,
+            }}>
+              <TouchableOpacity
+                onPress={() => setShowMetafieldValueEditor(false)}
+                style={{ padding: 4 }}
+              >
+                <Text style={{ fontSize: 16, color: '#6B7280', fontWeight: '500' }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>
+                {currentEditingField?.name || currentEditingField?.title || 'Edit Value'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (currentEditingField) {
+                    const fieldName = currentEditingField.name || currentEditingField.title;
+                    setMetafieldValues(prev => ({
+                      ...prev,
+                      [fieldName]: tempFieldValue
+                    }));
+                    setHasChanges(true);
+                  }
+                  setShowMetafieldValueEditor(false);
+                  setCurrentEditingField(null);
+                  setTempFieldValue('');
+                }}
+                style={{ padding: 4 }}
+              >
+                <Text style={{ fontSize: 16, color: '#3B82F6', fontWeight: '500' }}>
+                  Save
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Content */}
+          <View style={{ flex: 1, padding: 16 }}>
+            <Text style={{
+              fontSize: 14,
+              color: '#6B7280',
+              marginBottom: 8,
+            }}>
+              {currentEditingField?.type ? currentEditingField.type.replace(/_/g, ' ') : 'Value'}
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#D1D5DB',
+                borderRadius: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                fontSize: 16,
+                backgroundColor: '#fff',
+              }}
+              value={tempFieldValue}
+              onChangeText={setTempFieldValue}
+              placeholder={(() => {
+                const type = currentEditingField?.type;
+                switch (type) {
+                  case 'single_line_text': return 'Enter text';
+                  case 'multi_line_text': return 'Enter description';
+                  case 'number': return 'Enter number';
+                  case 'email': return 'Enter email address';
+                  case 'url': return 'Enter URL';
+                  case 'phone': return 'Enter phone number';
+                  case 'weight': return 'Enter weight';
+                  case 'dimension': return 'Enter dimensions';
+                  case 'volume': return 'Enter volume';
+                  case 'money': return 'Enter amount';
+                  case 'rating': return 'Enter rating';
+                  case 'date': return 'Enter date';
+                  case 'date_time': return 'Enter date and time';
+                  case 'color': return 'Enter color';
+                  case 'boolean': return 'True or False';
+                  default: return 'Enter value';
+                }
+              })()}
+              keyboardType={
+                currentEditingField?.type === 'number' ||
+                currentEditingField?.type === 'weight' ||
+                currentEditingField?.type === 'dimension' ||
+                currentEditingField?.type === 'volume' ||
+                currentEditingField?.type === 'money' ||
+                currentEditingField?.type === 'rating'
+                  ? 'numeric'
+                  : currentEditingField?.type === 'email'
+                    ? 'email-address'
+                    : 'default'
+              }
+              autoCapitalize={
+                currentEditingField?.type === 'email' ||
+                currentEditingField?.type === 'url'
+                  ? 'none'
+                  : 'sentences'
+              }
+              autoFocus
+              multiline={currentEditingField?.type === 'multi_line_text'}
+              numberOfLines={currentEditingField?.type === 'multi_line_text' ? 4 : 1}
+            />
+          </View>
         </View>
       </Modal>
 

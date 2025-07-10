@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Switch, StatusBar, BackHandler, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MetafieldSet, MetafieldValue } from './metafields-system';
+import { MetafieldSet, MetafieldValue } from './metafields-types';
 
 interface MetafieldValueFormProps {
   definition: MetafieldSet;

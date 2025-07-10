@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../lib/instant';
 import { useStore } from '../lib/store-context';
 import { id } from '@instantdb/react-native';
-import { MetafieldSet, MetafieldValue, MetafieldEntityType, METAFIELD_CATEGORIES } from './metafields-system';
+import { MetafieldSet, MetafieldValue, MetafieldEntityType, METAFIELD_CATEGORIES } from './metafields-types';
 import MetafieldValueForm from './metafield-value-form';
 
 interface MetafieldValuesProps {

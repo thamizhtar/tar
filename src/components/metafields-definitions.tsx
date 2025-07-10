@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../lib/instant';
 import { useStore } from '../lib/store-context';
 import { id } from '@instantdb/react-native';
-import { MetafieldSet, MetafieldEntityType, METAFIELD_CATEGORIES } from './metafields-system';
+import { MetafieldSet, MetafieldEntityType, METAFIELD_CATEGORIES } from './metafields-types';
 import MetafieldDefinitionForm from './metafield-definition-form';
 import GroupForm from './group-form';
 

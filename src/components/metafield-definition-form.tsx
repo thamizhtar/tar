@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Switch, StatusBar, BackHandler } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MetafieldSet, MetafieldEntityType } from './metafields-system';
+import { MetafieldSet, MetafieldEntityType } from './metafields-types';
 
 // Metafield types (matching Shopify)
 const METAFIELD_TYPES = [

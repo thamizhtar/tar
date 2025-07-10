@@ -5,56 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { db } from '../lib/instant';
 import { useStore } from '../lib/store-context';
 import { id } from '@instantdb/react-native';
+import { MetafieldSet, MetafieldValue, MetafieldEntityType, METAFIELD_CATEGORIES } from './metafields-types';
 import MetafieldDefinitions from './metafields-definitions';
 import MetafieldValues from './metafields-values';
 
-// Categories that support metafields
-export const METAFIELD_CATEGORIES = [
-  { id: 'products', name: 'Products', count: 0 },
-  { id: 'items', name: 'Items', count: 0 },
-  { id: 'collections', name: 'Collections', count: 0 },
-  { id: 'customers', name: 'Customers', count: 0 },
-  { id: 'orders', name: 'Orders', count: 0 },
-  { id: 'draftOrders', name: 'Draft orders', count: 0 },
-  { id: 'locations', name: 'Locations', count: 0 },
-  { id: 'pages', name: 'Pages', count: 0 },
-  { id: 'blogs', name: 'Blogs', count: 0 },
-  { id: 'blogPosts', name: 'Blog posts', count: 0 },
-  { id: 'markets', name: 'Markets', count: 0 },
-  { id: 'shop', name: 'Shop', count: 0 },
-] as const;
-
-export type MetafieldEntityType = typeof METAFIELD_CATEGORIES[number]['id'];
-
-export interface MetafieldSet {
-  id: string;
-  name: string; // "Warranty Period", "Product Weight", etc.
-  type: 'text' | 'number' | 'boolean' | 'date' | 'url' | 'email' | 'select' | 'multiselect' | 'textarea' | 'rich_text' | 'color' | 'file' | 'image';
-  category: MetafieldEntityType; // products, items, collections, customers, etc.
-  group?: string; // Display group for organization
-  order?: number; // Display order within group
-  inputConfig?: {
-    min?: number;
-    max?: number;
-    options?: string[]; // For select/multiselect
-    placeholder?: string;
-    validations?: any;
-  };
-  required?: boolean;
-  storeId: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface MetafieldValue {
-  id: string;
-  setId: string; // Links to MetafieldSet
-  entityId: string; // ID of the specific product/item/collection/etc
-  value: string; // The actual value
-  storeId: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+// Re-export types for backward compatibility
+export type { MetafieldSet, MetafieldValue, MetafieldEntityType } from './metafields-types';
+export { METAFIELD_CATEGORIES } from './metafields-types';
 
 interface MetafieldsSystemProps {
   onClose?: () => void;
