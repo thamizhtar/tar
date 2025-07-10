@@ -22,18 +22,21 @@ interface OptionValuesSelector {
     values: any[];
   } | null;
   onClose: () => void;
-  onGenerate: (selectedValues: any[], optionSetData: any) => void;
+  onGenerate: (selectedValues: any[], optionSetData: any) => Promise<void>;
 }
 
-export default function OptionValuesSelector({ 
-  visible, 
-  optionSet, 
-  onClose, 
-  onGenerate 
+export default function OptionValuesSelector({
+  visible,
+  optionSet,
+  onClose,
+  onGenerate
 }: OptionValuesSelector) {
   const { currentStore } = useStore();
   const insets = useSafeAreaInsets();
   const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [activeGroup, setActiveGroup] = useState<string>('');
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   // Handle native back button
   useEffect(() => {
@@ -56,8 +59,19 @@ export default function OptionValuesSelector({
   useEffect(() => {
     if (optionSet) {
       setSelectedValues([]);
+      setActiveGroup('');
     }
   }, [optionSet]);
+
+  // Auto-hide notification
+  useEffect(() => {
+    if (showNotification) {
+      const timer = setTimeout(() => {
+        setShowNotification(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showNotification]);
 
   // Query option values for the current option set
   const { data: optionValuesData } = db.useQuery(
@@ -70,6 +84,26 @@ export default function OptionValuesSelector({
 
   const optionValues = optionValuesData?.optionValues || [];
 
+  // Group values by their group field
+  const groupedValues = React.useMemo(() => {
+    const groups = new Map<string, any[]>();
+    optionValues.forEach((value: any) => {
+      const group = value.group || 'Group 1';
+      if (!groups.has(group)) {
+        groups.set(group, []);
+      }
+      groups.get(group)!.push(value);
+    });
+    return groups;
+  }, [optionValues]);
+
+  // Set initial active group
+  useEffect(() => {
+    if (groupedValues.size > 0 && !activeGroup) {
+      setActiveGroup(Array.from(groupedValues.keys())[0]);
+    }
+  }, [groupedValues, activeGroup]);
+
   const handleValueToggle = (valueId: string) => {
     setSelectedValues(prev => {
       if (prev.includes(valueId)) {
@@ -80,31 +114,62 @@ export default function OptionValuesSelector({
     });
   };
 
-  const handleGenerate = () => {
+  const handleSelectAll = () => {
+    if (selectedValues.length === optionValues.length) {
+      // Deselect all
+      setSelectedValues([]);
+    } else {
+      // Select all
+      setSelectedValues(optionValues.map(value => value.id));
+    }
+  };
+
+  const handleGenerate = async () => {
     if (selectedValues.length === 0) {
-      Alert.alert('Error', 'Please select at least one option value');
+      setNotificationMessage('Please select at least one option value');
+      setShowNotification(true);
       return;
     }
 
-    const selectedValueObjects = optionValues.filter(value => 
-      selectedValues.includes(value.id)
-    );
+    try {
+      // Show progress notification
+      setNotificationMessage('Generating items...');
+      setShowNotification(true);
 
-    // Create option set data for storage in products.options
-    const optionSetData = {
-      id: optionSet?.id,
-      name: optionSet?.name,
-      values: selectedValueObjects.map(value => ({
-        id: value.id,
-        name: value.name,
-        group: value.group,
-        identifierType: value.identifierType,
-        identifierValue: value.identifierValue,
-        order: value.order
-      }))
-    };
+      const selectedValueObjects = optionValues.filter(value =>
+        selectedValues.includes(value.id)
+      );
 
-    onGenerate(selectedValueObjects, optionSetData);
+      // Create option set data for storage in products.options
+      const optionSetData = {
+        id: optionSet?.id,
+        name: optionSet?.name,
+        values: selectedValueObjects.map(value => ({
+          id: value.id,
+          name: value.name,
+          group: value.group,
+          identifierType: value.identifierType,
+          identifierValue: value.identifierValue,
+          order: value.order
+        }))
+      };
+
+      await onGenerate(selectedValueObjects, optionSetData);
+
+      // Show success notification
+      const combinations = selectedValueObjects.length; // This is simplified, actual combinations would be calculated
+      setNotificationMessage(`Generated ${combinations} item variants successfully`);
+
+      // Auto-close after showing success
+      setTimeout(() => {
+        setShowNotification(false);
+        onClose();
+      }, 2000);
+
+    } catch (error) {
+      setNotificationMessage('Failed to generate items. Please try again.');
+      setShowNotification(true);
+    }
   };
 
   if (!visible || !optionSet) {
@@ -119,32 +184,45 @@ export default function OptionValuesSelector({
       onRequestClose={onClose}
     >
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        {/* Notification Bar */}
+        {showNotification && (
+          <View style={{
+            position: 'absolute',
+            top: insets.top,
+            left: 0,
+            right: 0,
+            backgroundColor: '#111827',
+            paddingVertical: 12,
+            paddingHorizontal: 20,
+            zIndex: 1000,
+          }}>
+            <Text style={{
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: '500',
+              textAlign: 'center',
+            }}>
+              {notificationMessage}
+            </Text>
+          </View>
+        )}
+
         {/* Header */}
         <View style={{
           paddingTop: insets.top + 16,
           paddingBottom: 16,
           paddingHorizontal: 20,
           backgroundColor: '#fff',
-          borderBottomWidth: 1,
-          borderBottomColor: '#F3F4F6',
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}>
-          <TouchableOpacity
-            onPress={onClose}
-            style={{ padding: 8, marginLeft: -8 }}
-          >
-            <MaterialIcons name="arrow-back" size={24} color="#111827" />
-          </TouchableOpacity>
-
           <Text style={{
             fontSize: 18,
             fontWeight: '600',
             color: '#111827',
+            textAlign: 'left',
             flex: 1,
-            textAlign: 'center',
-            marginHorizontal: 16,
           }}>
             {optionSet.name}
           </Text>
@@ -170,11 +248,7 @@ export default function OptionValuesSelector({
         </View>
 
         {/* Content */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={{ flex: 1 }}>
           {optionValues.length === 0 ? (
             <View style={{
               flex: 1,
@@ -203,64 +277,143 @@ export default function OptionValuesSelector({
               </Text>
             </View>
           ) : (
-            optionValues
-              .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
-              .map((value: any) => {
-                const isSelected = selectedValues.includes(value.id);
-                
-                return (
-                  <TouchableOpacity
-                    key={value.id}
-                    style={{
-                      backgroundColor: '#fff',
-                      paddingVertical: 16,
-                      paddingHorizontal: 20,
-                      borderBottomWidth: 1,
-                      borderBottomColor: '#F3F4F6',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                    }}
-                    onPress={() => handleValueToggle(value.id)}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ 
-                        fontSize: 16, 
-                        fontWeight: '500', 
-                        color: '#111827' 
+            <>
+              {/* Select All Card */}
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#fff',
+                  paddingVertical: 16,
+                  paddingHorizontal: 20,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#F3F4F6',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+                onPress={handleSelectAll}
+              >
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#111827'
+                }}>
+                  {selectedValues.length === optionValues.length ? 'Deselect All' : 'Select All'}
+                </Text>
+
+                <View style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: selectedValues.length === optionValues.length ? '#007AFF' : '#D1D5DB',
+                  backgroundColor: selectedValues.length === optionValues.length ? '#007AFF' : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  {selectedValues.length === optionValues.length && (
+                    <MaterialIcons name="check" size={16} color="#fff" />
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              {/* Group Tabs */}
+              {groupedValues.size > 1 && (
+                <View style={{
+                  flexDirection: 'row',
+                  backgroundColor: '#F9FAFB',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#F3F4F6',
+                }}>
+                  {Array.from(groupedValues.keys()).map((group) => (
+                    <TouchableOpacity
+                      key={group}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        backgroundColor: activeGroup === group ? '#fff' : 'transparent',
+                        borderBottomWidth: activeGroup === group ? 2 : 0,
+                        borderBottomColor: '#007AFF',
+                      }}
+                      onPress={() => setActiveGroup(group)}
+                    >
+                      <Text style={{
+                        fontSize: 14,
+                        fontWeight: '500',
+                        color: activeGroup === group ? '#007AFF' : '#6B7280',
+                        textAlign: 'center',
                       }}>
-                        {value.name}
+                        {group}
                       </Text>
-                      {value.group && (
-                        <Text style={{ 
-                          fontSize: 14, 
-                          color: '#6B7280', 
-                          marginTop: 2 
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Values List */}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 20 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {(groupedValues.get(activeGroup) || [])
+                  .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+                  .map((value: any) => {
+                    const isSelected = selectedValues.includes(value.id);
+
+                    return (
+                      <TouchableOpacity
+                        key={value.id}
+                        style={{
+                          backgroundColor: '#fff',
+                          paddingVertical: 16,
+                          paddingHorizontal: 20,
+                          borderBottomWidth: 1,
+                          borderBottomColor: '#F3F4F6',
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                        onPress={() => handleValueToggle(value.id)}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={{
+                            fontSize: 16,
+                            fontWeight: '500',
+                            color: '#111827'
+                          }}>
+                            {value.name}
+                          </Text>
+                          <Text style={{
+                            fontSize: 14,
+                            color: '#6B7280',
+                            marginTop: 2
+                          }}>
+                            {value.group}
+                          </Text>
+                        </View>
+
+                        <View style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          borderWidth: 2,
+                          borderColor: isSelected ? '#007AFF' : '#D1D5DB',
+                          backgroundColor: isSelected ? '#007AFF' : 'transparent',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                         }}>
-                          {value.group}
-                        </Text>
-                      )}
-                    </View>
-                    
-                    <View style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 12,
-                      borderWidth: 2,
-                      borderColor: isSelected ? '#007AFF' : '#D1D5DB',
-                      backgroundColor: isSelected ? '#007AFF' : 'transparent',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      {isSelected && (
-                        <MaterialIcons name="check" size={16} color="#fff" />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+                          {isSelected && (
+                            <MaterialIcons name="check" size={16} color="#fff" />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+              </ScrollView>
+            </>
           )}
-        </ScrollView>
+        </View>
       </View>
     </Modal>
   );

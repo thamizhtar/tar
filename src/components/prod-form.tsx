@@ -652,9 +652,25 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       await Promise.all(itemPromises);
 
       // Update product options field for storefront display
-      const productOptionsData = {
-        optionSets: [optionSetData]
-      };
+      // Group selected values by their group field
+      const optionsGroupMap = new Map<string, any[]>();
+      selectedValues.forEach((value: any) => {
+        const group = value.group || 'Group 1';
+        if (!optionsGroupMap.has(group)) {
+          optionsGroupMap.set(group, []);
+        }
+        optionsGroupMap.get(group)!.push({
+          name: value.name,
+          type: value.identifierType,
+          identifier: value.identifierValue
+        });
+      });
+
+      // Convert to the required format
+      const productOptionsData = Array.from(optionsGroupMap.entries()).map(([group, values]) => ({
+        group,
+        values
+      }));
 
       await db.transact(
         db.tx.products[product.id].update({
@@ -662,7 +678,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         })
       );
 
-      Alert.alert('Success', `Generated ${combinations.length} item variants from ${optionSetData.name}`);
+      // Close the option values selector and show success
       setShowOptionValuesSelector(false);
       setCurrentOptionSet(null);
       setShowOptionSetSelector(false);
@@ -672,6 +688,54 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       Alert.alert('Error', 'Failed to generate items. Please try again.');
     }
   };
+
+  const generateSingleItem = async (productId: string, productTitle: string) => {
+    if (!currentStore?.id) return;
+
+    try {
+      // Check if items already exist for this product
+      const existingItems = productItemsData?.items || [];
+      if (existingItems.length > 0) {
+        // Update existing single item name if it exists
+        const singleItem = existingItems.find((item: any) =>
+          !item.option1 && !item.option2 && !item.option3
+        );
+        if (singleItem) {
+          const productPrefix = productTitle.toUpperCase().replace(/\s+/g, '-');
+          await db.transact(
+            db.tx.items[singleItem.id].update({
+              sku: productPrefix
+            })
+          );
+        }
+        return;
+      }
+
+      // Generate a single item for products without options
+      const itemId = id();
+      const productPrefix = productTitle.toUpperCase().replace(/\s+/g, '-');
+
+      const itemData = {
+        productId: productId,
+        storeId: currentStore.id,
+        sku: productPrefix,
+        price: formData.price || 0,
+        saleprice: formData.saleprice || 0,
+        cost: formData.cost || 0,
+        available: 0,
+        onhand: 0,
+        committed: 0,
+        unavailable: 0,
+        reorderlevel: 0,
+      };
+
+      await db.transact(db.tx.items[itemId].update(itemData));
+    } catch (error) {
+      console.error('Failed to generate single item:', error);
+    }
+  };
+
+
 
   const handlePrimaryImageUpload = async () => {
     try {
@@ -875,6 +939,12 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       } else if (isEditing && productCollection?.id) {
         // If editing and collection was removed, unlink it
         await db.transact(db.tx.products[productId].unlink({ collection: productCollection.id }));
+      }
+
+      // Auto-generate items for new products
+      if (!isEditing) {
+        // If creating new product, generate a single item by default
+        await generateSingleItem(productId, formData.title.trim());
       }
 
       log.info(`Product saved successfully: ${productId}`, 'ProductForm');
@@ -2648,7 +2718,9 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
           setShowOptionValuesSelector(false);
           setCurrentOptionSet(null);
         }}
-        onGenerate={generateItemsFromSelectedValues}
+        onGenerate={async (selectedValues, optionSetData) => {
+          await generateItemsFromSelectedValues(selectedValues, optionSetData);
+        }}
       />
 
     </View>
