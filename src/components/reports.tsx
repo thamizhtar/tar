@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Card from './ui/Card';
 import MetricCard from './ui/metric';
@@ -10,10 +10,25 @@ import { useStore } from '../lib/store-context';
 
 interface ReportsScreenProps {
   onOpenMenu?: () => void;
+  onClose?: () => void;
 }
 
-export default function ReportsScreen({ onOpenMenu }: ReportsScreenProps) {
+export default function ReportsScreen({ onOpenMenu, onClose }: ReportsScreenProps) {
   const { currentStore } = useStore();
+
+  // Handle back navigation
+  useEffect(() => {
+    const backAction = () => {
+      if (onClose) {
+        onClose();
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [onClose]);
 
   // Query products for metrics filtered by current store
   const { data } = db.useQuery(

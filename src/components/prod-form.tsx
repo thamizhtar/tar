@@ -13,6 +13,7 @@ import R2Image from './ui/r2-image';
 import { db, getCurrentTimestamp } from '../lib/instant';
 import { MediaManager, MediaItem } from './media';
 import { useStore } from '../lib/store-context';
+import { createDefaultLocation } from '../lib/inventory-setup';
 
 // Simple replacement components for removed vtabs
 const TabContent = ({ title, children }: { title: string; children?: React.ReactNode }) => (
@@ -48,9 +49,10 @@ interface ProductFormScreenProps {
   product?: any;
   onClose: () => void;
   onSave?: () => void;
+  onNavigate?: (screen: string, data?: any) => void;
 }
 
-export default function ProductFormScreen({ product, onClose, onSave }: ProductFormScreenProps) {
+export default function ProductFormScreen({ product, onClose, onSave, onNavigate }: ProductFormScreenProps) {
   const { currentStore } = useStore();
   const insets = useSafeAreaInsets();
   const isEditing = !!product;
@@ -678,10 +680,37 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         if (combination[1]) itemData.option2 = combination[1].name;
         if (combination[2]) itemData.option3 = combination[2].name;
 
-        return db.transact([
+        // Create the item first
+        await db.transact([
           db.tx.items[itemId].update(itemData),
           db.tx.items[itemId].link({ product: product.id })
         ]);
+
+        // Create default location stock record
+        try {
+          const defaultLocationId = await createDefaultLocation(currentStore.id, currentStore.name);
+          const itemLocationId = id();
+          const timestamp = new Date().toISOString();
+
+          await db.transact([
+            db.tx.itemLocations[itemLocationId].update({
+              itemId: itemId,
+              locationId: defaultLocationId,
+              storeId: currentStore.id,
+              onHand: 0,
+              committed: 0,
+              unavailable: 0,
+              updatedAt: timestamp
+            })
+          ]);
+
+          console.log(`Created location stock for item: ${itemId}`);
+        } catch (error) {
+          console.error('Failed to create default location stock for item:', itemId, error);
+          // Don't fail item creation if location stock creation fails
+        }
+
+        return Promise.resolve();
       });
 
       await Promise.all(itemPromises);
@@ -782,10 +811,37 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         if (combination[1]) itemData.option2 = combination[1].name;
         if (combination[2]) itemData.option3 = combination[2].name;
 
-        return db.transact([
+        // Create the item first
+        await db.transact([
           db.tx.items[itemId].update(itemData),
           db.tx.items[itemId].link({ product: product.id })
         ]);
+
+        // Create default location stock record
+        try {
+          const defaultLocationId = await createDefaultLocation(currentStore.id, currentStore.name);
+          const itemLocationId = id();
+          const timestamp = new Date().toISOString();
+
+          await db.transact([
+            db.tx.itemLocations[itemLocationId].update({
+              itemId: itemId,
+              locationId: defaultLocationId,
+              storeId: currentStore.id,
+              onHand: 0,
+              committed: 0,
+              unavailable: 0,
+              updatedAt: timestamp
+            })
+          ]);
+
+          console.log(`Created location stock for item: ${itemId}`);
+        } catch (error) {
+          console.error('Failed to create default location stock for item:', itemId, error);
+          // Don't fail item creation if location stock creation fails
+        }
+
+        return Promise.resolve();
       });
 
       await Promise.all(itemPromises);
@@ -912,6 +968,30 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         db.tx.items[itemId].update(itemData),
         db.tx.items[itemId].link({ product: productId })
       ]);
+
+      // Create default location stock record
+      try {
+        const defaultLocationId = await createDefaultLocation(currentStore.id, currentStore.name);
+        const itemLocationId = id();
+        const timestamp = new Date().toISOString();
+
+        await db.transact([
+          db.tx.itemLocations[itemLocationId].update({
+            itemId: itemId,
+            locationId: defaultLocationId,
+            storeId: currentStore.id,
+            onHand: 0,
+            committed: 0,
+            unavailable: 0,
+            updatedAt: timestamp
+          })
+        ]);
+
+        console.log(`Created location stock for single item: ${itemId}`);
+      } catch (error) {
+        console.error('Failed to create default location stock for single item:', itemId, error);
+        // Don't fail item creation if location stock creation fails
+      }
     } catch (error) {
       console.error('Failed to generate single item:', error);
     }
@@ -1687,6 +1767,24 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                     value={itemsSearchQuery}
                     onChangeText={setItemsSearchQuery}
                   />
+                  <TouchableOpacity
+                    onPress={() => {
+                      // Navigate to inventory dashboard
+                      if (onNavigate) {
+                        onNavigate('inventory');
+                      }
+                    }}
+                    style={{
+                      padding: 8,
+                      marginLeft: 8,
+                    }}
+                  >
+                    <MaterialIcons
+                      name="inventory"
+                      size={20}
+                      color="#3B82F6"
+                    />
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setShowFilters(!showFilters)}
                     style={{

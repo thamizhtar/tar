@@ -37,25 +37,44 @@ const _schema = i.schema({
       updatedAt: i.date(),
     }),
     items: i.entity({
-      available: i.number().optional(),
+      storeId: i.string().indexed(),
+      productId: i.string().indexed(),
+
+      // Basic Identity
+      sku: i.string(),
       barcode: i.string().optional(),
-      committed: i.number().optional(),
-      cost: i.number().optional(),
-      image: i.string().optional(),
-      margin: i.number().optional(),
-      metafields: i.any().optional(),
-      onhand: i.number().optional(),
       option1: i.string().optional(),
       option2: i.string().optional(),
       option3: i.string().optional(),
+      image: i.string().optional(),
       path: i.string().optional(),
+
+      // Pricing
+      cost: i.number().optional(),
       price: i.number().optional(),
-      productId: i.string().indexed(),
-      reorderlevel: i.number().optional(),
       saleprice: i.number().optional(),
-      sku: i.string().optional(),
-      storeId: i.string().indexed(),
+      margin: i.number().optional(),
+
+      // Inventory Control Settings
+      trackQty: i.boolean().optional(),
+      allowPreorder: i.boolean().optional(),
+
+      // Global Stock Summary (calculated from locations)
+      totalOnHand: i.number().optional().indexed(),
+      totalAvailable: i.number().optional().indexed(),
+      totalCommitted: i.number().optional().indexed(),
+
+      // Legacy fields (keep for backward compatibility)
+      available: i.number().optional(),
+      committed: i.number().optional(),
+      onhand: i.number().optional(),
       unavailable: i.number().optional(),
+      reorderlevel: i.number().optional(),
+
+      // Metadata
+      metafields: i.any().optional(),
+      createdAt: i.date().optional(),
+      updatedAt: i.date().optional()
     }),
     media: i.entity({
       order: i.number().optional(),
@@ -229,6 +248,73 @@ const _schema = i.schema({
       name: i.string().unique().indexed(),
       storeId: i.string().indexed(),
     }),
+    // Locations for multi-location inventory
+    locations: i.entity({
+      storeId: i.string().indexed(),
+
+      name: i.string(),
+      type: i.string().optional(),
+      address: i.any().optional(),
+
+      // Location Settings
+      isDefault: i.boolean().optional(),
+      isActive: i.boolean().optional(),
+      fulfillsOnlineOrders: i.boolean().optional(),
+
+      // Contact & Details
+      contactInfo: i.any().optional(),
+
+      metafields: i.any().optional(),
+      createdAt: i.date().optional(),
+      updatedAt: i.date().optional()
+    }),
+
+    // Per-location inventory levels (core table)
+    itemLocations: i.entity({
+      itemId: i.string().indexed(),
+      locationId: i.string().indexed(),
+      storeId: i.string().indexed(),
+
+      // Stock Levels
+      onHand: i.number().optional(),
+      committed: i.number().optional(),
+      unavailable: i.number().optional(),
+
+      // Reorder Management
+      reorderLevel: i.number().optional(),
+      reorderQuantity: i.number().optional(),
+
+      // Tracking
+      lastCounted: i.date().optional(),
+      lastReceived: i.date().optional(),
+
+      updatedAt: i.date().optional()
+    }),
+
+    // Inventory adjustment history
+    inventoryAdjustments: i.entity({
+      storeId: i.string().indexed(),
+      itemId: i.string().indexed(),
+      locationId: i.string().indexed(),
+
+      // Adjustment Details
+      type: i.string(),
+      quantityBefore: i.number(),
+      quantityAfter: i.number(),
+      quantityChange: i.number(),
+
+      // Reason & Reference
+      reason: i.string().optional(),
+      reference: i.string().optional(),
+      notes: i.string().optional(),
+
+      // Audit Trail
+      userId: i.string().optional(),
+      userName: i.string().optional(),
+
+      createdAt: i.date().optional().indexed()
+    }),
+
     inventory: i.entity({
       id: i.string().unique().indexed(),
       storeId: i.string().indexed(),
@@ -275,6 +361,54 @@ const _schema = i.schema({
         on: "items",
         has: "one",
         label: "product",
+      },
+    },
+    itemsItemLocations: {
+      forward: {
+        on: "items",
+        has: "many",
+        label: "itemLocations",
+      },
+      reverse: {
+        on: "itemLocations",
+        has: "one",
+        label: "item",
+      },
+    },
+    locationsItemLocations: {
+      forward: {
+        on: "locations",
+        has: "many",
+        label: "itemLocations",
+      },
+      reverse: {
+        on: "itemLocations",
+        has: "one",
+        label: "location",
+      },
+    },
+    itemsInventoryAdjustments: {
+      forward: {
+        on: "items",
+        has: "many",
+        label: "inventoryAdjustments",
+      },
+      reverse: {
+        on: "inventoryAdjustments",
+        has: "one",
+        label: "item",
+      },
+    },
+    locationsInventoryAdjustments: {
+      forward: {
+        on: "locations",
+        has: "many",
+        label: "inventoryAdjustments",
+      },
+      reverse: {
+        on: "inventoryAdjustments",
+        has: "one",
+        label: "location",
       },
     },
     store$users: {

@@ -14,6 +14,8 @@ import ReportsScreen from "../components/reports";
 import FullScreenMenu from "../components/menu";
 import Options from "../components/options";
 import MetafieldsSystem from "../components/metafields-system";
+import Locations from "../components/locations";
+import ItemsScreen from "../components/items";
 
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
@@ -23,7 +25,8 @@ import { StoreProvider } from "../lib/store-context";
 import { log, trackError } from "../lib/logger";
 import ErrorBoundary from "../components/ui/error-boundary";
 
-type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu' | 'option-create' | 'option-edit';
+
+type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu' | 'option-create' | 'option-edit' | 'items' | 'locations';
 
 interface NavigationState {
   screen: Screen;
@@ -44,6 +47,7 @@ export default function Page() {
   const [collectionFormCollection, setCollectionFormCollection] = useState<any>(null); // Track collection being edited in form
   const [isCollectionFormOpen, setIsCollectionFormOpen] = useState(false); // Track if collection form is open
   const [optionSetData, setOptionSetData] = useState<{id?: string, name?: string}>({});
+  const [navigationData, setNavigationData] = useState<any>(null);
 
   // Navigation stack to track navigation history
   const [navigationStack, setNavigationStack] = useState<NavigationState[]>([{
@@ -62,6 +66,8 @@ export default function Page() {
 
         if (result.success) {
           console.log('✅ Complete migration process finished successfully');
+
+
         } else {
           console.error('❌ Complete migration process failed:', result.error);
           // Fallback to old migration if complete process fails
@@ -205,6 +211,8 @@ export default function Page() {
       setOptionSetData(data || {});
     }
 
+
+
     // Add current state to navigation stack (but avoid duplicates of the same screen)
     setNavigationStack(prev => {
       const lastState = prev[prev.length - 1];
@@ -236,6 +244,7 @@ export default function Page() {
           onSave={() => {
             // Refresh will happen automatically due to real-time updates
           }}
+          onNavigate={handleNavigate}
         />
       );
     }
@@ -279,7 +288,10 @@ export default function Page() {
       case 'sales':
         return <SalesScreen onOpenMenu={() => handleNavigate('menu')} />;
       case 'reports':
-        return <ReportsScreen onOpenMenu={() => handleNavigate('menu')} />;
+        return <ReportsScreen
+          onOpenMenu={() => handleNavigate('menu')}
+          onClose={() => handleNavigate('menu')}
+        />;
       case 'products':
         return <ProductsScreen
           isGridView={isGridView}
@@ -291,6 +303,7 @@ export default function Page() {
             setProductFormProduct(null);
             setIsProductFormOpen(false);
           }}
+          onClose={() => handleNavigate('menu')}
         />;
       case 'collections':
         return <CollectionsScreen
@@ -304,6 +317,16 @@ export default function Page() {
         />;
       case 'metafields':
         return <MetafieldsSystem
+          onClose={() => handleNavigate('menu')}
+        />;
+
+      case 'items':
+        return <ItemsScreen
+          isGridView={isGridView}
+          onClose={() => handleNavigate('menu')}
+        />;
+      case 'locations':
+        return <Locations
           onClose={() => handleNavigate('menu')}
         />;
 
@@ -321,7 +344,7 @@ export default function Page() {
     <StoreProvider>
       <ErrorBoundary>
         <View className="flex flex-1">
-          {currentScreen === 'menu' || currentScreen === 'options' || currentScreen === 'metafields' || isProductFormOpen || isCollectionFormOpen ? (
+          {currentScreen === 'menu' || currentScreen === 'options' || currentScreen === 'metafields' || currentScreen === 'items' || currentScreen === 'locations' || isProductFormOpen || isCollectionFormOpen ? (
             // Full screen screens without header or bottom navigation (including product and collection forms)
             <ErrorBoundary>
               {renderMainContent()}

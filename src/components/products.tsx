@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Modal, Animated } from 'react-native';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Modal, Animated, BackHandler } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, formatCurrency } from '../lib/instant';
@@ -15,6 +15,7 @@ interface ProductsScreenProps {
   isGridView?: boolean;
   onProductFormOpen?: (product?: any) => void;
   onProductFormClose?: () => void;
+  onClose?: () => void;
 }
 
 type FilterStatus = 'All' | 'Active' | 'Draft';
@@ -112,7 +113,7 @@ const ProductItem = React.memo(({
   );
 });
 
-export default function ProductsScreen({ isGridView = false, onProductFormOpen, onProductFormClose }: ProductsScreenProps) {
+export default function ProductsScreen({ isGridView = false, onProductFormOpen, onProductFormClose, onClose }: ProductsScreenProps) {
   const insets = useSafeAreaInsets();
   const { currentStore } = useStore();
   const [showForm, setShowForm] = useState(false);
@@ -124,6 +125,20 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
   const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
   const [showBottomDrawer, setShowBottomDrawer] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+
+  // Handle back navigation
+  useEffect(() => {
+    const backAction = () => {
+      if (onClose) {
+        onClose();
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [onClose]);
 
   // Query products with their items filtered by current store
   const { isLoading, error, data } = db.useQuery(

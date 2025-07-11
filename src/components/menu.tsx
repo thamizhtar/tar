@@ -6,7 +6,7 @@ import StoreForm from './store-form';
 import StoreManagement from './store-mgmt';
 import ComList from './comlist';
 
-type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'menu';
+type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu' | 'items' | 'locations';
 
 interface FullScreenMenuProps {
   onNavigate: (screen: Screen) => void;
@@ -171,7 +171,7 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
                     <Text className="text-black text-xl font-bold">P</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => handleItemPress('products')}
+                    onPress={() => handleItemPress('items')}
                     className="w-12 h-12 bg-purple-400 items-center justify-center mr-3"
                     style={{ borderRadius: 24 }}
                   >

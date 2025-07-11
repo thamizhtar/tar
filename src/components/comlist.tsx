@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 
-type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu';
+type Screen = 'space' | 'sales' | 'reports' | 'products' | 'collections' | 'options' | 'metafields' | 'menu' | 'items' | 'locations';
 
 interface ComListProps {
   onNavigate: (screen: Screen) => void;
@@ -27,8 +27,8 @@ export default function ComList({ onNavigate, onClose }: ComListProps) {
       title: 'Metafields'
     },
     {
-      id: 'reports',
-      title: 'Reports'
+      id: 'locations',
+      title: 'Locations'
     }
   ];
 
@@ -48,6 +48,8 @@ export default function ComList({ onNavigate, onClose }: ComListProps) {
             </TouchableOpacity>
           </View>
         </View>
+        {/* Bottom divider */}
+        <View className="h-px bg-gray-200" />
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
