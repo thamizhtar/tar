@@ -187,6 +187,8 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
   const [imageUploading, setImageUploading] = useState(false);
   const [primaryImageUploading, setPrimaryImageUploading] = useState(false);
   const [mediasUploading, setMediasUploading] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const [selectedOptionSet, setSelectedOptionSet] = useState<string | null>(null);
@@ -464,6 +466,15 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     return fieldChanged || metafieldsChanged;
   };
 
+  // Function to show notification
+  const showNotificationMessage = (message: string) => {
+    setNotificationMessage(message);
+    setShowNotification(true);
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
+  };
+
   const updateField = (field: string, value: any) => {
     if (field === 'image') {
       setImageError(false); // Reset image error when image URL changes
@@ -476,6 +487,16 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     if (!isInitializing && isDataLoaded) {
       setHasChanges(checkForChanges(newFormData));
     }
+  };
+
+  // Function to handle status change with validation
+  const handleStatusChange = (newStatus: boolean) => {
+    if (newStatus && !formData.pos && !formData.website) {
+      showNotificationMessage('Enable POS or Website to set product as Active');
+      return;
+    }
+    updateField('status', newStatus);
+    setShowStatusDrawer(false);
   };
 
   const updateOptions = () => {
@@ -657,7 +678,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         if (combination[1]) itemData.option2 = combination[1].name;
         if (combination[2]) itemData.option3 = combination[2].name;
 
-        return db.transact(db.tx.items[itemId].update(itemData));
+        return db.transact([
+          db.tx.items[itemId].update(itemData),
+          db.tx.items[itemId].link({ product: product.id })
+        ]);
       });
 
       await Promise.all(itemPromises);
@@ -758,7 +782,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         if (combination[1]) itemData.option2 = combination[1].name;
         if (combination[2]) itemData.option3 = combination[2].name;
 
-        return db.transact(db.tx.items[itemId].update(itemData));
+        return db.transact([
+          db.tx.items[itemId].update(itemData),
+          db.tx.items[itemId].link({ product: product.id })
+        ]);
       });
 
       await Promise.all(itemPromises);
@@ -798,6 +825,46 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     } catch (error) {
       console.error('Failed to generate items:', error);
       Alert.alert('Error', 'Failed to generate items. Please try again.');
+    }
+  };
+
+  // Function to fix unlinked items
+  const fixUnlinkedItems = async () => {
+    try {
+      // Query all items for current store
+      const { data: allItemsData } = await db.queryOnce({
+        items: {
+          $: { where: { storeId: currentStore.id } },
+          product: {}
+        }
+      });
+
+      const allItems = allItemsData?.items || [];
+
+      // Find items that have productId but no product link
+      const unlinkedItems = allItems.filter(item =>
+        item.productId && (!item.product || item.product.length === 0)
+      );
+
+      if (unlinkedItems.length > 0) {
+        console.log(`Found ${unlinkedItems.length} unlinked items, fixing...`);
+
+        // Create link transactions for unlinked items
+        const linkTransactions = unlinkedItems.map(item =>
+          db.tx.items[item.id].link({ product: item.productId })
+        );
+
+        await db.transact(linkTransactions);
+        console.log(`Fixed ${unlinkedItems.length} unlinked items`);
+
+        // Show success message
+        Alert.alert('Success', `Fixed ${unlinkedItems.length} unlinked items`);
+      } else {
+        Alert.alert('Info', 'No unlinked items found');
+      }
+    } catch (error) {
+      console.error('Failed to fix unlinked items:', error);
+      Alert.alert('Error', 'Failed to fix unlinked items');
     }
   };
 
@@ -841,7 +908,10 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
         reorderlevel: 0,
       };
 
-      await db.transact(db.tx.items[itemId].update(itemData));
+      await db.transact([
+        db.tx.items[itemId].update(itemData),
+        db.tx.items[itemId].link({ product: productId })
+      ]);
     } catch (error) {
       console.error('Failed to generate single item:', error);
     }
@@ -1566,6 +1636,26 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                   }}>
                     Tap the "O" button to select an option set{'\n'}and generate product variants
                   </Text>
+
+                  {/* Fix Unlinked Items Button */}
+                  <TouchableOpacity
+                    onPress={fixUnlinkedItems}
+                    style={{
+                      backgroundColor: '#F59E0B',
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 6,
+                      marginTop: 16,
+                    }}
+                  >
+                    <Text style={{
+                      color: '#fff',
+                      fontSize: 14,
+                      fontWeight: '500',
+                    }}>
+                      Fix Unlinked Items
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               );
             }
@@ -1887,6 +1977,30 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       paddingTop: insets.top,
       paddingBottom: insets.bottom
     }}>
+      {/* Top Notification Bar */}
+      {showNotification && (
+        <View style={{
+          position: 'absolute',
+          top: insets.top + 10,
+          left: 20,
+          right: 20,
+          backgroundColor: '#FEF3C7',
+          borderWidth: 1,
+          borderColor: '#F59E0B',
+          borderRadius: 8,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          zIndex: 1000,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}>
+          <MaterialIcons name="info" size={20} color="#F59E0B" style={{ marginRight: 8 }} />
+          <Text style={{ fontSize: 14, color: '#92400E', flex: 1 }}>
+            {notificationMessage}
+          </Text>
+        </View>
+      )}
+
       {/* Content Area */}
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
         {activeTabData && (
@@ -2187,10 +2301,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 paddingHorizontal: 16,
                 marginBottom: 12,
               }}
-              onPress={() => {
-                updateField('status', true);
-                setShowStatusDrawer(false);
-              }}
+              onPress={() => handleStatusChange(true)}
             >
               <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Active</Text>
               <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
@@ -2207,10 +2318,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
                 paddingVertical: 16,
                 paddingHorizontal: 16,
               }}
-              onPress={() => {
-                updateField('status', false);
-                setShowStatusDrawer(false);
-              }}
+              onPress={() => handleStatusChange(false)}
             >
               <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>Draft</Text>
               <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>

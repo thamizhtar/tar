@@ -17,7 +17,7 @@ interface ProductsScreenProps {
   onProductFormClose?: () => void;
 }
 
-type FilterStatus = 'All' | 'Active' | 'Draft' | 'Archived';
+type FilterStatus = 'All' | 'Active' | 'Draft';
 
 // Memoized product item component for better performance
 const ProductItem = React.memo(({
@@ -34,13 +34,12 @@ const ProductItem = React.memo(({
   onLongPress: () => void;
 }) => {
   const getProductStatus = (product: any) => {
-    if (product.pos === true || product.isActive === true) return 'Active';
-    if (product.publish === false) return 'Draft';
-    return 'Archived';
+    // Simple logic: false = Draft, everything else = Active
+    return product.status === false ? 'Draft' : 'Active';
   };
 
   const getVariantCount = (product: any) => {
-    return product.variants?.length || 5;
+    return product.item?.length || 0;
   };
 
   return (
@@ -93,7 +92,7 @@ const ProductItem = React.memo(({
             {product.title || 'Untitled Product'}
           </Text>
           <Text className="text-sm text-gray-500">
-            {getVariantCount(product)} variants • {getProductStatus(product)}
+            {getVariantCount(product)} {getVariantCount(product) === 1 ? 'item' : 'items'} • {getProductStatus(product)}
           </Text>
         </View>
 
@@ -126,7 +125,7 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
   const [showBottomDrawer, setShowBottomDrawer] = useState(false);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
-  // Query products filtered by current store
+  // Query products with their items filtered by current store
   const { isLoading, error, data } = db.useQuery(
     currentStore?.id ? {
       products: {
@@ -134,7 +133,8 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
           where: {
             storeId: currentStore.id
           }
-        }
+        },
+        item: {}
       }
     } : null // Don't query if no store selected
   );
@@ -145,6 +145,8 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
   if (error) {
     trackError(new Error(`Products query failed: ${error}`), 'ProductsScreen');
   }
+
+
 
   // Filter products based on search and status - memoized for performance
   const filteredProducts = useMemo(() => {
@@ -162,15 +164,16 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
              brand?.toLowerCase().includes(searchTerm) ||
              tagsString?.toLowerCase().includes(searchTerm);
 
-      // Status filter
+      // Status filter - Simple and intuitive
       let matchesStatus = true;
       if (activeFilter === 'Active') {
-        matchesStatus = product.pos === true || product.isActive === true;
+        // Active: status is true (or undefined/null which defaults to active)
+        matchesStatus = product.status !== false;
       } else if (activeFilter === 'Draft') {
-        matchesStatus = product.publish === false;
-      } else if (activeFilter === 'Archived') {
-        matchesStatus = product.pos === false && product.isActive === false;
+        // Draft: status is explicitly false
+        matchesStatus = product.status === false;
       }
+      // 'All' filter shows everything (matchesStatus remains true)
 
       return matchesSearch && matchesStatus;
     });
@@ -178,16 +181,11 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
 
   // Get product status for display
   const getProductStatus = (product: any) => {
-    if (product.pos === true || product.isActive === true) return 'Active';
-    if (product.publish === false) return 'Draft';
-    if (product.pos === false && product.isActive === false) return 'Archived';
-    return 'Active'; // Default
+    // Simple logic: false = Draft, everything else = Active
+    return product.status === false ? 'Draft' : 'Active';
   };
 
-  // Get variant count (mock data for now)
-  const getVariantCount = (product: any) => {
-    return product.variants?.length || 5; // Default to 5 variants as shown in image
-  };
+
 
   const handleEdit = useCallback((product: any) => {
     setEditingProduct(product);
@@ -399,41 +397,6 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
     );
   }
 
-  if (!isLoading && filteredProducts.length === 0 && searchQuery === '') {
-    return (
-      <View className="flex-1 bg-white">
-        {/* Search Bar */}
-        <View className="bg-white px-4 py-3">
-          <View className="flex-row items-center">
-            <TouchableOpacity onPress={handleAddNew}>
-              <Feather name="plus" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-            <TextInput
-              placeholder="Search"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              className="flex-1 text-base text-gray-900 ml-3 mr-3"
-              placeholderTextColor="#9CA3AF"
-            />
-            <TouchableOpacity onPress={() => setShowFilterModal(true)}>
-              <MaterialCommunityIcons name="sort-ascending" size={20} color="#9CA3AF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <EmptyState
-          icon="inventory"
-          title="No Products Yet"
-          description="Start by adding your first product to the inventory"
-          action={{
-            label: "Add Product",
-            onPress: handleAddNew
-          }}
-        />
-      </View>
-    );
-  }
-
   return (
     <View className="flex-1 bg-white">
       {/* Search Bar with top and bottom borders - NO spacing above */}
@@ -460,19 +423,19 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
         </View>
       </View>
 
-      {/* Filter Tabs */}
-      <View className="px-4 py-3 bg-white">
+      {/* Filter Tabs - Always visible */}
+      <View className="px-4 py-3 bg-white border-b border-gray-100">
         <View className="flex-row">
-          {(['All', 'Active', 'Draft', 'Archived'] as FilterStatus[]).map((filter) => (
+          {(['All', 'Active', 'Draft'] as FilterStatus[]).map((filter) => (
             <TouchableOpacity
               key={filter}
               onPress={() => setActiveFilter(filter)}
               className={`mr-6 pb-2 ${
-                activeFilter === filter ? '' : ''
+                activeFilter === filter ? 'border-b-2 border-blue-600' : ''
               }`}
             >
               <Text className={`text-base font-medium ${
-                activeFilter === filter ? 'text-gray-900' : 'text-gray-500'
+                activeFilter === filter ? 'text-blue-600' : 'text-gray-500'
               }`}>
                 {filter}
               </Text>
@@ -482,18 +445,34 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
       </View>
 
 
-      {/* Products List - Exact match to image design */}
+      {/* Products List */}
       <View className="flex-1">
         {filteredProducts.length === 0 ? (
           <View className="flex-1 justify-center items-center p-8">
             <View className="items-center">
-              <View className="w-16 h-16 bg-gray-200 items-center justify-center mb-4">
+              <View className="w-16 h-16 bg-gray-200 items-center justify-center mb-4 rounded-lg">
                 <Text className="text-2xl">📦</Text>
               </View>
-              <Text className="text-lg font-medium text-gray-900 mb-2">No products found</Text>
-              <Text className="text-gray-500 text-center">
-                {searchQuery ? 'Try adjusting your search' : 'Add your first product to get started'}
+              <Text className="text-lg font-medium text-gray-900 mb-2">
+                {searchQuery ? 'No products found' :
+                 activeFilter === 'Active' ? 'No active products' :
+                 activeFilter === 'Draft' ? 'No draft products' :
+                 'No products yet'}
               </Text>
+              <Text className="text-gray-500 text-center mb-6">
+                {searchQuery ? 'Try adjusting your search terms or filters' :
+                 activeFilter === 'Active' ? 'Products will appear here when they are published and available' :
+                 activeFilter === 'Draft' ? 'Products will appear here when they are saved as drafts' :
+                 'Start by adding your first product to the inventory'}
+              </Text>
+              {(products.length === 0 || activeFilter === 'All') && (
+                <TouchableOpacity
+                  onPress={handleAddNew}
+                  className="bg-blue-600 px-6 py-3 rounded-lg"
+                >
+                  <Text className="text-white font-medium">Add Product</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         ) : (
