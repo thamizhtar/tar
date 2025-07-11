@@ -19,7 +19,7 @@ import ItemsScreen from "../components/items";
 
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
-import { runMigrationIfNeeded } from "../lib/migrate-products";
+
 import { completeMigrationProcess } from "../lib/cleanup-legacy";
 import { StoreProvider } from "../lib/store-context";
 import { log, trackError } from "../lib/logger";
@@ -71,12 +71,12 @@ export default function Page() {
         } else {
           console.error('❌ Complete migration process failed:', result.error);
           // Fallback to old migration if complete process fails
-          await runMigrationIfNeeded();
+          // Migration removed
         }
       } catch (error) {
         console.error('❌ Migration error:', error);
         // Fallback to old migration if complete process fails
-        await runMigrationIfNeeded();
+        // Migration removed
       }
     };
 

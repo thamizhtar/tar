@@ -43,8 +43,8 @@ export async function createDefaultLocation(storeId: string, storeName?: string)
     });
 
     // If any location exists, return the first one (or the default one)
-    if (existingLocations.locations && existingLocations.locations.length > 0) {
-      const defaultLocation = existingLocations.locations.find(loc => loc.isDefault) || existingLocations.locations[0];
+    if (existingLocations.data.locations && existingLocations.data.locations.length > 0) {
+      const defaultLocation = existingLocations.data.locations.find(loc => loc.isDefault) || existingLocations.data.locations[0];
       return defaultLocation.id;
     }
 
@@ -84,8 +84,8 @@ export async function createDefaultLocation(storeId: string, storeName?: string)
         }
       });
 
-      if (fallbackLocations.locations && fallbackLocations.locations.length > 0) {
-        return fallbackLocations.locations[0].id;
+      if (fallbackLocations.data.locations && fallbackLocations.data.locations.length > 0) {
+        return fallbackLocations.data.locations[0].id;
       }
     } catch (fallbackError) {
       console.error('Fallback location query failed:', fallbackError);
@@ -100,7 +100,7 @@ export async function createDefaultLocation(storeId: string, storeName?: string)
  */
 export async function migrateItemsToLocationSystem(storeId: string): Promise<void> {
   try {
-    console.log(`Starting migration for store: ${storeId}`);
+    // Migration log removed. Migration is complete.
 
     // Get default location for the store
     const defaultLocationId = await createDefaultLocation(storeId);
@@ -117,19 +117,19 @@ export async function migrateItemsToLocationSystem(storeId: string): Promise<voi
       }
     });
 
-    if (!items.items || items.items.length === 0) {
+    if (!items.data.items || items.data.items.length === 0) {
       console.log('No items found for migration');
       return;
     }
 
-    console.log(`Found ${items.items.length} items to migrate`);
+    console.log(`Found ${items.data.items.length} items to migrate`);
 
     // Process items in smaller batches to avoid transaction limits
     const batchSize = 10;
     let migratedCount = 0;
 
-    for (let i = 0; i < items.items.length; i += batchSize) {
-      const batch = items.items.slice(i, i + batchSize);
+    for (let i = 0; i < items.data.items.length; i += batchSize) {
+      const batch = items.data.items.slice(i, i + batchSize);
       const transactions = [];
       const timestamp = new Date().toISOString();
 
@@ -147,7 +147,7 @@ export async function migrateItemsToLocationSystem(storeId: string): Promise<voi
             }
           });
 
-          if (existingItemLocation.itemLocations && existingItemLocation.itemLocations.length > 0) {
+          if (existingItemLocation.data.itemLocations && existingItemLocation.data.itemLocations.length > 0) {
             console.log(`Item ${item.id} already has location record, skipping`);
             continue;
           }
@@ -233,11 +233,11 @@ export async function updateItemTotals(itemId: string): Promise<void> {
       }
     });
 
-    if (!itemLocations.itemLocations) {
+    if (!itemLocations.data.itemLocations) {
       return;
     }
 
-    const totals = itemLocations.itemLocations.reduce(
+    const totals = itemLocations.data.itemLocations.reduce(
       (acc, loc) => ({
         totalOnHand: acc.totalOnHand + (loc.onHand || 0),
         totalAvailable: acc.totalAvailable + calculateAvailable(loc),
@@ -319,7 +319,7 @@ export async function getStoreLocations(storeId: string): Promise<Location[]> {
       }
     });
 
-    return result.locations || [];
+    return result.data.locations || [];
   } catch (error) {
     console.error('Failed to get store locations:', error);
     return [];
@@ -342,7 +342,7 @@ export async function getItemStock(itemId: string): Promise<ItemLocation[]> {
       }
     });
 
-    return result.itemLocations || [];
+    return result.data.itemLocations || [];
   } catch (error) {
     console.error('Failed to get item stock:', error);
     return [];
@@ -362,7 +362,7 @@ export async function initializeInventorySystem(): Promise<void> {
       store: {}
     });
 
-    const stores = storesResult.store || [];
+    const stores = storesResult.data.store || [];
     console.log(`Found ${stores.length} stores to initialize`);
 
     if (stores.length === 0) {
