@@ -14,7 +14,11 @@ export type MetafieldEntityType =
 export interface MetafieldSet {
   id: string;
   title: string;
-  type: 'single_line_text' | 'multi_line_text' | 'number' | 'url' | 'email' | 'color' | 'date' | 'date_time' | 'boolean' | 'weight' | 'dimension' | 'volume' | 'money' | 'rating' | 'reference';
+  name: string;
+  namespace?: string;
+  key?: string;
+  description?: string;
+  type: 'single_line_text' | 'multi_line_text' | 'rich_text' | 'number' | 'url' | 'email' | 'color' | 'date' | 'date_time' | 'boolean' | 'weight' | 'dimension' | 'volume' | 'money' | 'rating' | 'reference' | 'json';
   category: MetafieldEntityType;
   group: string;
   order: number;
@@ -27,15 +31,23 @@ export interface MetafieldSet {
     options?: string[];
     reference_type?: string;
   };
+  inputConfig?: any;
+  required?: boolean;
   storeId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface MetafieldValue {
   id: string;
+  setId: string;
   metafieldSetId: string;
   entityId: string;
+  entityType: string;
   value: string;
   storeId: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export const METAFIELD_CATEGORIES = [

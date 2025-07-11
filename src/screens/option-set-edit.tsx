@@ -189,8 +189,8 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
             group: value.group,
             order: orderInGroup,
             storeId: currentStore.id,
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
           });
         });
 

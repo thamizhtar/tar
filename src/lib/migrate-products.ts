@@ -32,22 +32,22 @@ export const migrateProductsToNewSchema = async () => {
       }
 
       // Migrate description to excerpt
-      if (product.description && !product.excerpt) {
-        updates.excerpt = product.description;
+      if ((product as any).description && !(product as any).excerpt) {
+        (updates as any).excerpt = (product as any).description;
         needsUpdate = true;
         console.log(`📝 Migrating description to excerpt for "${product.name || product.title}"`);
       }
 
       // Migrate imageUrl to image
-      if (product.imageUrl && !product.image) {
-        updates.image = product.imageUrl;
+      if ((product as any).imageUrl && !product.image) {
+        updates.image = (product as any).imageUrl;
         needsUpdate = true;
         console.log(`🖼️ Migrating imageUrl to image for "${product.name || product.title}"`);
       }
 
       // Migrate isActive to pos (if pos is not set)
-      if (product.isActive !== undefined && product.pos === undefined) {
-        updates.pos = product.isActive;
+      if ((product as any).isActive !== undefined && product.pos === undefined) {
+        updates.pos = (product as any).isActive;
         needsUpdate = true;
       }
 
@@ -90,9 +90,9 @@ export const runMigrationIfNeeded = async () => {
       const products = data?.products || [];
       const needsMigration = products.some(product =>
         (product.name && !product.title) ||
-        (product.description && !product.excerpt) ||
-        (product.imageUrl && !product.image) ||
-        (product.isActive !== undefined && product.pos === undefined)
+        ((product as any).description && !(product as any).excerpt) ||
+        ((product as any).imageUrl && !product.image) ||
+        ((product as any).isActive !== undefined && product.pos === undefined)
       );
 
       if (needsMigration) {
@@ -132,18 +132,18 @@ export const forceCompleteMigration = async () => {
         needsUpdate = true;
       }
 
-      if (!product.excerpt && product.description) {
-        updates.excerpt = product.description;
+      if (!(product as any).excerpt && (product as any).description) {
+        (updates as any).excerpt = (product as any).description;
         needsUpdate = true;
       }
 
-      if (!product.image && product.imageUrl) {
-        updates.image = product.imageUrl;
+      if (!product.image && (product as any).imageUrl) {
+        updates.image = (product as any).imageUrl;
         needsUpdate = true;
       }
 
-      if (product.pos === undefined && product.isActive !== undefined) {
-        updates.pos = product.isActive;
+      if (product.pos === undefined && (product as any).isActive !== undefined) {
+        updates.pos = (product as any).isActive;
         needsUpdate = true;
       } else if (product.pos === undefined) {
         updates.pos = false;

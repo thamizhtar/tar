@@ -39,17 +39,17 @@ export const cleanupLegacyFields = async (force: boolean = false) => {
         needsCleanup = true;
       }
 
-      if (product.description !== undefined) {
+      if ((product as any).description !== undefined) {
         updates.description = null;
         needsCleanup = true;
       }
 
-      if (product.imageUrl !== undefined) {
+      if ((product as any).imageUrl !== undefined) {
         updates.imageUrl = null;
         needsCleanup = true;
       }
 
-      if (product.isActive !== undefined) {
+      if ((product as any).isActive !== undefined) {
         updates.isActive = null;
         needsCleanup = true;
       }

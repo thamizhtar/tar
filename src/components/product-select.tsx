@@ -40,7 +40,7 @@ export default function ProductSelect({ collectionId, onClose }: ProductSelectPr
   
   // Get products currently in this collection
   const collectionProducts = products.filter(product => 
-    product.collection?.id === collectionId
+    (product as any).collection?.id === collectionId
   );
 
   // Initialize selected products with current collection products
@@ -296,7 +296,7 @@ export default function ProductSelect({ collectionId, onClose }: ProductSelectPr
       <FlatList
         data={filteredProducts}
         keyExtractor={(item) => item.id}
-        renderItem={renderProductItem}
+        renderItem={renderProductItem as any}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 16 }}

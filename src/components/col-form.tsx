@@ -141,7 +141,7 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
 
     setLoading(true);
     try {
-      const timestamp = new Date(); // Use Date object instead of timestamp number
+      const timestamp = Date.now(); // Use timestamp number
       const collectionData = {
         name: formData.name.trim(),
         description: formData.description.trim(),
@@ -170,7 +170,7 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
       onClose();
     } catch (error) {
       console.error('Failed to save collection:', error);
-      console.error('Collection data that failed:', collectionData);
+      console.error('Collection data that failed:', error);
       Alert.alert('Error', `Failed to save collection: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
@@ -513,7 +513,7 @@ export default function CollectionFormScreen({ collection, onClose, onSave }: Co
                 fontSize: 14,
                 color: '#6B7280',
               }}>
-                {collectionWithProducts?.collections?.[0]?.products?.length || 0} product{(collectionWithProducts?.collections?.[0]?.products?.length || 0) !== 1 ? 's' : ''} in this collection
+                {(collectionWithProducts?.collections?.[0] as any)?.products?.length || 0} product{((collectionWithProducts?.collections?.[0] as any)?.products?.length || 0) !== 1 ? 's' : ''} in this collection
               </Text>
             </View>
           )}

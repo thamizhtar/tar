@@ -298,7 +298,7 @@ export default function CollectionSelect({ selectedCollection, onSelect, onClose
       <FlatList
         data={filteredCollections}
         keyExtractor={(item) => item.id}
-        renderItem={renderCollectionItem}
+        renderItem={renderCollectionItem as any}
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
       />

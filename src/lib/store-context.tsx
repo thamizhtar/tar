@@ -48,7 +48,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (storedStoreId && stores.length > 0) {
         const store = stores.find(s => s.id === storedStoreId);
         if (store) {
-          setCurrentStoreState(store);
+          setCurrentStoreState({
+            ...store,
+            createdAt: new Date(store.createdAt),
+            updatedAt: store.updatedAt ? new Date(store.updatedAt) : undefined
+          });
         } else {
           // Stored store ID doesn't exist anymore, clear it
           await AsyncStorage.removeItem(CURRENT_STORE_KEY);
@@ -75,12 +79,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const storedStoreId = await AsyncStorage.getItem(CURRENT_STORE_KEY);
           if (!storedStoreId) {
             // No stored preference, select first store
-            await setCurrentStore(stores[0]);
+            await setCurrentStore({
+              ...stores[0],
+              createdAt: new Date(stores[0].createdAt),
+              updatedAt: stores[0].updatedAt ? new Date(stores[0].updatedAt) : undefined
+            });
           }
         } catch (error) {
           console.error('Error checking stored store:', error);
           // Fallback to first store
-          await setCurrentStore(stores[0]);
+          await setCurrentStore({
+            ...stores[0],
+            createdAt: new Date(stores[0].createdAt),
+            updatedAt: stores[0].updatedAt ? new Date(stores[0].updatedAt) : undefined
+          });
         }
       };
       autoSelectFirstStore();
@@ -107,7 +119,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       };
 
       await db.transact([
-        db.tx.store[storeId].update(newStore)
+        db.tx.store[storeId].update({
+          ...newStore,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        })
       ]);
 
       // The new store will be automatically available through the query
@@ -123,7 +139,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await db.transact([
         db.tx.store[storeId].update({
           ...updates,
-          updatedAt: new Date()
+          createdAt: Date.now(),
+          updatedAt: Date.now()
         })
       ]);
 
@@ -147,7 +164,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (currentStore?.id === storeId) {
         const remainingStores = stores.filter(s => s.id !== storeId);
         if (remainingStores.length > 0) {
-          await setCurrentStore(remainingStores[0]);
+          await setCurrentStore({
+            ...remainingStores[0],
+            createdAt: new Date(remainingStores[0].createdAt),
+            updatedAt: remainingStores[0].updatedAt ? new Date(remainingStores[0].updatedAt) : undefined
+          });
         } else {
           setCurrentStoreState(null);
           await AsyncStorage.removeItem(CURRENT_STORE_KEY);
@@ -165,7 +186,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value: StoreContextType = {
     currentStore,
-    stores,
+    stores: stores.map(store => ({
+      ...store,
+      createdAt: new Date(store.createdAt),
+      updatedAt: store.updatedAt ? new Date(store.updatedAt) : undefined
+    })),
     isLoading,
     setCurrentStore,
     createStore,

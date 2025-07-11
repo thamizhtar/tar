@@ -74,18 +74,24 @@ export default function MetafieldValues({
     if (definitionsData?.metafieldSets) {
       const defs = definitionsData.metafieldSets.map(field => ({
         id: field.id,
+        title: field.name || '',
         name: field.name || '',
-        type: field.type || 'text',
-        category: field.category || entityType,
-        group: field.group,
+        namespace: field.namespace,
+        key: field.key,
+        description: field.description,
+        type: field.type as any,
+        category: field.category as any,
+        group: field.group || '',
         order: field.order || 0,
+        filter: false,
+        config: {},
         inputConfig: field.inputConfig || {},
         required: field.required || false,
         storeId: field.storeId,
-        createdAt: field.createdAt,
-        updatedAt: field.updatedAt,
+        createdAt: new Date(field.createdAt),
+        updatedAt: new Date(field.updatedAt),
       })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      setDefinitions(defs);
+      setDefinitions(defs as MetafieldSet[]);
     } else {
       setDefinitions([]);
     }
@@ -95,16 +101,18 @@ export default function MetafieldValues({
   useEffect(() => {
     if (valuesData?.metafieldValues) {
       const vals: Record<string, MetafieldValue> = {};
-      valuesData.metafieldValues.forEach(field => {
+      valuesData.metafieldValues.forEach((field: any) => {
         if (field?.setId) {
           vals[field.setId] = {
             id: field.id,
             setId: field.setId,
+            metafieldSetId: field.setId,
             entityId: field.entityId,
+            entityType: field.entityType || entityType,
             value: field.value || '',
             storeId: field.storeId,
-            createdAt: field.createdAt,
-            updatedAt: field.updatedAt,
+            createdAt: new Date(field.createdAt),
+            updatedAt: new Date(field.updatedAt),
           };
         }
       });
@@ -133,8 +141,8 @@ export default function MetafieldValues({
         entityId: entityId,
         value: value,
         storeId: currentStore.id,
-        createdAt: existingValue ? existingValue.createdAt : new Date(),
-        updatedAt: new Date(),
+        createdAt: existingValue ? Date.now() : Date.now(),
+        updatedAt: Date.now(),
       };
 
       await db.transact(
@@ -256,7 +264,7 @@ export default function MetafieldValues({
     );
   };
 
-  const renderGroupSection = (groupName: string, groupDefinitions: MetafieldDefinition[]) => {
+  const renderGroupSection = (groupName: string, groupDefinitions: MetafieldSet[]) => {
     return (
       <View key={groupName}>
         {/* Group Header */}

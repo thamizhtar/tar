@@ -55,7 +55,11 @@ export default function TagSelect({ selectedTags = [], onSelect, onClose }: TagS
     } : null
   );
 
-  const tags: TagItem[] = data?.tags || [];
+  const tags: TagItem[] = (data?.tags || []).map(tag => ({
+    ...tag,
+    createdAt: new Date(tag.createdAt),
+    updatedAt: tag.updatedAt ? new Date(tag.updatedAt) : undefined
+  }));
 
   // Filter tags based on search query
   const filteredTags = tags.filter(tag =>

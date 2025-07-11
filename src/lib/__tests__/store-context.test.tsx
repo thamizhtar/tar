@@ -4,6 +4,15 @@ import { Text } from 'react-native';
 import { StoreProvider, useStore } from '../store-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Add custom matchers
+declare global {
+  namespace jest {
+    interface Matchers<R> {
+      toHaveTextContent(text: string): R;
+    }
+  }
+}
+
 // Mock the db module
 const mockUseQuery = jest.fn();
 const mockTransact = jest.fn();

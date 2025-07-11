@@ -69,7 +69,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
     } : null
   );
 
-  const productCollection = productWithCollection?.products?.[0]?.collection;
+  const productCollection = productWithCollection?.products?.[0]?.collection as any;
 
   // Query option sets and values for the current store
   const { data: optionSetsData } = db.useQuery(
@@ -221,14 +221,14 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
   const groupedMetafields = useMemo(() => {
     if (!metafieldDefinitionsData?.metafieldSets) return {};
-    return metafieldDefinitionsData.metafieldSets.reduce((acc: any, field: any) => {
+    return (metafieldDefinitionsData.metafieldSets as any[]).reduce((acc: Record<string, any>, field: any) => {
       const groupName = field.group || 'Ungrouped';
       if (!acc[groupName]) {
         acc[groupName] = [];
       }
       acc[groupName].push(field);
       return acc;
-    }, {});
+    }, {} as Record<string, any>);
   }, [metafieldDefinitionsData?.metafieldSets]);
 
   // Memoized placeholder function for better performance
@@ -519,7 +519,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
       if (metafieldDefinitionsData?.metafieldSets) {
         const field = metafieldDefinitionsData.metafieldSets.find((def: any) => def.id === fieldId);
         if (field) {
-          const fieldName = field.name || field.title;
+          const fieldName = field.name || (field as any).title;
           if (!metafieldValues[fieldName]) {
             setMetafieldValues(prev => ({
               ...prev,
@@ -843,7 +843,7 @@ export default function ProductFormScreen({ product, onClose, onSave }: ProductF
 
       // Find items that have productId but no product link
       const unlinkedItems = allItems.filter(item =>
-        item.productId && (!item.product || item.product.length === 0)
+        item.productId && (!item.product || (item.product as any).length === 0)
       );
 
       if (unlinkedItems.length > 0) {

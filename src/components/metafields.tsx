@@ -73,7 +73,7 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
   // Query metafield definitions for this store (using special parentid for definitions)
   const { data: metafieldsData } = db.useQuery(
     currentStore?.id ? {
-      metafields: {
+      metafieldSets: {
         $: {
           where: {
             storeId: currentStore.id,
@@ -87,7 +87,7 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
   // Query metafield values for this product
   const { data: valuesData } = db.useQuery(
     productId && currentStore?.id ? {
-      metafields: {
+      metafieldSets: {
         $: {
           where: {
             storeId: currentStore.id,
@@ -100,8 +100,8 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
 
   // Load definitions and values
   useEffect(() => {
-    if (metafieldsData?.metafields) {
-      const defs = metafieldsData.metafields.map(field => ({
+    if (metafieldsData?.metafieldSets) {
+      const defs = metafieldsData.metafieldSets.map(field => ({
         id: field.id,
         title: field.title || '',
         type: field.type || 'text',
@@ -118,11 +118,11 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
   }, [metafieldsData]);
 
   useEffect(() => {
-    if (valuesData?.metafields) {
+    if (valuesData?.metafieldSets) {
       const vals: Record<string, any> = {};
-      valuesData.metafields.forEach(field => {
-        if (field?.title && field?.value !== undefined) {
-          vals[field.title] = field.value;
+      valuesData.metafieldSets.forEach(field => {
+        if (field && (field as any).title && (field as any).value !== undefined) {
+          vals[(field as any).title] = (field as any).value;
         }
       });
       setValues(vals);
@@ -147,14 +147,16 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
         // Rename existing group - update all metafields in this group
         const groupFields = definitions.filter(def => def.group === editingGroupName);
         const updateTransactions = groupFields.map(field =>
-          db.tx.metafields[field.id].update({ group: newGroupName.trim() })
+          db.tx.metafieldSets[field.id].update({ group: newGroupName.trim() })
         );
-        await db.transact(...updateTransactions);
+        for (const transaction of updateTransactions) {
+          await db.transact(transaction);
+        }
       } else {
         // Create new group placeholder metafield to establish the group
         const groupId = id();
         await db.transact(
-          db.tx.metafields[groupId].update({
+          db.tx.metafieldSets[groupId].update({
             title: '__GROUP_PLACEHOLDER__',
             type: '__GROUP__',
             group: newGroupName.trim(),
@@ -186,10 +188,12 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
       // Delete all metafields in this group
       const groupFields = definitions.filter(def => def.group === groupName);
       const deleteTransactions = groupFields.map(field =>
-        db.tx.metafields[field.id].delete()
+        db.tx.metafieldSets[field.id].delete()
       );
 
-      await db.transact(...deleteTransactions);
+      for (const transaction of deleteTransactions) {
+        await db.transact(transaction);
+      }
     } catch (error) {
       Alert.alert('Error', 'Failed to delete group');
     }
@@ -202,7 +206,7 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
     }
 
     try {
-      await db.transact(db.tx.metafields[metafieldId].delete());
+      await db.transact(db.tx.metafieldSets[metafieldId].delete());
     } catch (error) {
       Alert.alert('Error', 'Failed to delete metafield');
     }
@@ -231,7 +235,7 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
         .reduce((max, def) => Math.max(max, def.order), -1);
 
       await db.transact(
-        db.tx.metafields[definitionId].update({
+        db.tx.metafieldSets[definitionId].update({
           title: newFieldData.title.trim(),
           type: newFieldData.type, // Use the actual field type
           group: selectedGroup,
@@ -301,16 +305,16 @@ export default function Metafields({ productId, onClose, showHeader = true }: Me
 
     try {
       // Find existing value or create new
-      const existingField = valuesData?.metafields?.find(f => f && f.title === fieldName);
+      const existingField = valuesData?.metafieldSets?.find(f => f && (f as any).title === fieldName);
 
       if (existingField) {
         await db.transact(
-          db.tx.metafields[existingField.id].update({ value: value.toString() })
+          db.tx.metafieldSets[existingField.id].update({ value: value.toString() })
         );
       } else {
         const valueId = id();
         await db.transact(
-          db.tx.metafields[valueId].update({
+          db.tx.metafieldSets[valueId].update({
             title: fieldName,
             value: value.toString(),
             storeId: currentStore.id,

@@ -66,18 +66,24 @@ export default function MetafieldDefinitions({
     if (metafieldsData?.metafieldSets) {
       const defs = metafieldsData.metafieldSets.map(field => ({
         id: field.id,
+        title: field.name || '',
         name: field.name || '',
-        type: field.type || 'text',
-        category: field.category || entityType,
-        group: field.group,
+        namespace: field.namespace,
+        key: field.key,
+        description: field.description,
+        type: field.type as any,
+        category: field.category as any,
+        group: field.group || '',
         order: field.order || 0,
+        filter: false,
+        config: {},
         inputConfig: field.inputConfig || {},
         required: field.required || false,
         storeId: field.storeId,
-        createdAt: field.createdAt,
-        updatedAt: field.updatedAt,
+        createdAt: new Date(field.createdAt),
+        updatedAt: new Date(field.updatedAt),
       })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      setDefinitions(defs);
+      setDefinitions(defs as MetafieldSet[]);
     } else {
       setDefinitions([]);
     }
@@ -111,8 +117,8 @@ export default function MetafieldDefinitions({
         inputConfig: definitionData.inputConfig || {},
         required: definitionData.required || false,
         storeId: currentStore.id,
-        createdAt: editingDefinition ? editingDefinition.createdAt : new Date(),
-        updatedAt: new Date(),
+        createdAt: editingDefinition ? Date.now() : Date.now(),
+        updatedAt: Date.now(),
       };
 
       await db.transact(
@@ -152,7 +158,9 @@ export default function MetafieldDefinitions({
         db.tx.metafieldSets[def.id].delete()
       );
 
-      await db.transact(...deleteTransactions);
+      for (const transaction of deleteTransactions) {
+        await db.transact(transaction);
+      }
     } catch (error) {
       Alert.alert('Error', 'Failed to delete group');
     }

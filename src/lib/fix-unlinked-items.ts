@@ -18,7 +18,7 @@ export const fixUnlinkedItems = async (storeId: string) => {
     
     // Find items that have productId but no product link
     const unlinkedItems = allItems.filter(item => 
-      item.productId && (!item.product || item.product.length === 0)
+      item.productId && (!item.product || (item.product as any).length === 0)
     );
 
     console.log(`Found ${unlinkedItems.length} unlinked items`);
@@ -67,9 +67,9 @@ export const verifyItemLinks = async (storeId: string) => {
     });
 
     const items = data?.items || [];
-    const linkedItems = items.filter(item => item.product && item.product.length > 0);
+    const linkedItems = items.filter(item => item.product && (item.product as any).length > 0);
     const unlinkedItems = items.filter(item => 
-      item.productId && (!item.product || item.product.length === 0)
+      item.productId && (!item.product || (item.product as any).length === 0)
     );
 
     return {

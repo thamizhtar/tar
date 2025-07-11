@@ -69,8 +69,8 @@ export default function MetafieldsSystem({
     // Count metafield sets per category
     if (metafieldsData?.metafieldSets) {
       metafieldsData.metafieldSets.forEach(set => {
-        if (set.category) {
-          counts[set.category] = (counts[set.category] || 0) + 1;
+        if (set && (set as any).category) {
+          counts[(set as any).category] = (counts[(set as any).category] || 0) + 1;
         }
       });
     }

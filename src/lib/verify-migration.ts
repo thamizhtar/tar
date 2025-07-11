@@ -42,15 +42,15 @@ export const verifyMigrationStatus = async (): Promise<MigrationStatus> => {
 
       // Check for new fields
       if (product.title) hasNewFields = true;
-      if (product.excerpt) hasNewFields = true;
+      if ((product as any).excerpt) hasNewFields = true;
       if (product.image) hasNewFields = true;
       if (product.pos !== undefined) hasNewFields = true;
 
       // Check for legacy fields (ignore null/undefined values from cleanup)
       if (product.name && product.name !== null) hasLegacyFields = true;
-      if (product.description && product.description !== null) hasLegacyFields = true;
-      if (product.imageUrl && product.imageUrl !== null) hasLegacyFields = true;
-      if (product.isActive !== undefined && product.isActive !== null) hasLegacyFields = true;
+      if ((product as any).description && (product as any).description !== null) hasLegacyFields = true;
+      if ((product as any).imageUrl && (product as any).imageUrl !== null) hasLegacyFields = true;
+      if ((product as any).isActive !== undefined && (product as any).isActive !== null) hasLegacyFields = true;
       if (product.sku && product.sku !== null) hasLegacyFields = true;
 
       // Check for required fields

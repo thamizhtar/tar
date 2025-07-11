@@ -237,7 +237,7 @@ export default function CollectionsScreen({ isGridView = false, onOpenForm }: Co
                           color: '#9CA3AF',
                           fontSize: 12,
                         }}>
-                          {collection.products?.length || 0} product{(collection.products?.length || 0) !== 1 ? 's' : ''}
+                          {(collection as any).products?.length || 0} product{((collection as any).products?.length || 0) !== 1 ? 's' : ''}
                         </Text>
                       </View>
                     </View>
