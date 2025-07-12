@@ -138,37 +138,109 @@ const _schema = i.schema({
       storeId: i.string().indexed(),
       updatedAt: i.date(),
     }),
-    orderitems: i.entity({
-      orderid: i.string().indexed(),
-      price: i.number().optional(),
-      qty: i.number().optional(),
-      sku: i.string().optional(),
+    // Customer Management
+    customers: i.entity({
       storeId: i.string().indexed(),
-      taxamt: i.number().optional(),
-      taxrate: i.number().optional(),
-      title: i.string().optional(),
-      total: i.number().optional(),
-      varianttitle: i.string().optional(),
-    }),
-    orders: i.entity({
-      billaddrs: i.any().optional(),
-      createdat: i.date(),
-      currency: i.string().optional(),
-      customerid: i.string().optional(),
-      discount: i.number().optional(),
+      name: i.string(),
       email: i.string().optional(),
-      fulfill: i.string().optional(),
-      name: i.string().optional(),
       phone: i.string().optional(),
-      referid: i.string().unique().indexed(),
-      shipaddrs: i.any().optional(),
-      shipping: i.number().optional(),
-      status: i.string().optional(),
+      notes: i.string().optional(),
+      tags: i.string().optional(), // JSON string of tags array
+      createdAt: i.date(),
+      updatedAt: i.date().optional(),
+
+      // Address information
+      defaultAddress: i.any().optional(), // JSON object for default address
+      addresses: i.any().optional(), // JSON array of addresses
+
+      // Customer stats
+      totalOrders: i.number().optional(),
+      totalSpent: i.number().optional(),
+      lastOrderDate: i.date().optional(),
+    }),
+
+    // Enhanced Order Items
+    orderitems: i.entity({
+      orderid: i.string().indexed(), // Keep original name for compatibility
+      productId: i.string().optional(),
+      itemId: i.string().optional(), // Reference to items table for variants
+      sku: i.string().optional(),
+      title: i.string(),
+      variantTitle: i.string().optional(),
+      qty: i.number(),
+      price: i.number(),
+      compareAtPrice: i.number().optional(),
+      cost: i.number().optional(),
+      taxRate: i.number().optional(),
+      taxAmount: i.number().optional(),
+      discountAmount: i.number().optional(),
+      lineTotal: i.number(),
       storeId: i.string().indexed(),
-      subtotal: i.number().optional(),
-      tax: i.number().optional(),
-      total: i.number().optional(),
-      updatedat: i.date().optional(),
+
+      // Product details for order history
+      productImage: i.string().optional(),
+      productType: i.string().optional(),
+      vendor: i.string().optional(),
+
+      // Fulfillment tracking
+      fulfillmentStatus: i.string().optional(), // 'unfulfilled', 'partial', 'fulfilled'
+      trackingNumber: i.string().optional(),
+      trackingUrl: i.string().optional(),
+    }),
+
+    // Enhanced Orders
+    orders: i.entity({
+      storeId: i.string().indexed(),
+      orderNumber: i.string().unique().indexed(), // Human readable order number like #1001
+      referid: i.string().unique().indexed(), // Internal reference ID (keeping original name for compatibility)
+      createdat: i.date(), // Keep original name for compatibility
+
+      // Customer Information
+      customerId: i.string().optional().indexed(),
+      customerName: i.string().optional(),
+      customerEmail: i.string().optional(),
+      customerPhone: i.string().optional(),
+
+      // Order Status
+      status: i.string().indexed(), // 'open', 'closed', 'cancelled'
+      fulfillmentStatus: i.string().indexed(), // 'unfulfilled', 'partial', 'fulfilled'
+      paymentStatus: i.string().indexed(), // 'unpaid', 'partial', 'paid', 'refunded'
+
+      // Financial Information
+      currency: i.string().optional(),
+      subtotal: i.number(),
+      discountAmount: i.number().optional(),
+      discountCode: i.string().optional(),
+      shippingAmount: i.number().optional(),
+      taxAmount: i.number().optional(),
+      total: i.number(),
+      totalPaid: i.number().optional(),
+      totalRefunded: i.number().optional(),
+
+      // Addresses
+      billingAddress: i.any().optional(),
+      shippingAddress: i.any().optional(),
+
+      // Order Metadata
+      notes: i.string().optional(),
+      tags: i.string().optional(), // JSON string of tags array
+      source: i.string().optional(), // 'pos', 'online', 'phone', etc.
+
+      // Timestamps
+      updatedAt: i.date().optional(),
+      closedAt: i.date().optional(),
+      cancelledAt: i.date().optional(),
+
+      // Location and Staff
+      locationId: i.string().optional(),
+      staffId: i.string().optional(),
+
+      // Additional fields for POS
+      deviceId: i.string().optional(),
+      receiptNumber: i.string().optional(),
+
+      // Market/Channel information
+      market: i.string().optional(), // 'online', 'pos', 'wholesale', etc.
     }),
     path: i.entity({
       location: i.string().optional(),
@@ -411,6 +483,61 @@ const _schema = i.schema({
         label: "location",
       },
     },
+    // Customer relationships
+    customersOrders: {
+      forward: {
+        on: "customers",
+        has: "many",
+        label: "orders",
+      },
+      reverse: {
+        on: "orders",
+        has: "one",
+        label: "customer",
+      },
+    },
+
+    // Order relationships
+    ordersOrderitems: {
+      forward: {
+        on: "orders",
+        has: "many",
+        label: "orderitems",
+      },
+      reverse: {
+        on: "orderitems",
+        has: "one",
+        label: "order",
+      },
+    },
+
+    // Order item relationships to products and items
+    orderitemsProducts: {
+      forward: {
+        on: "orderitems",
+        has: "one",
+        label: "product",
+      },
+      reverse: {
+        on: "products",
+        has: "many",
+        label: "orderitems",
+      },
+    },
+
+    orderitemsItems: {
+      forward: {
+        on: "orderitems",
+        has: "one",
+        label: "item",
+      },
+      reverse: {
+        on: "items",
+        has: "many",
+        label: "orderitems",
+      },
+    },
+
     store$users: {
       forward: {
         on: "store",
