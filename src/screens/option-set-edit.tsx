@@ -54,10 +54,10 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
   // Load existing data
   const { data } = db.useQuery(
     !isNewSet && currentStore?.id && setId ? {
-      optionSets: {
+      opsets: {
         $: { where: { id: setId, storeId: currentStore.id } }
       },
-      optionValues: {
+      opvalues: {
         $: { where: { setId: setId } }
       }
     } : {}
@@ -68,10 +68,10 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
 
   // Handle case where tables don't exist yet
   const safeData = React.useMemo(() => {
-    if (!data) return { optionSets: [], optionValues: [] };
+    if (!data) return { opsets: [], opvalues: [] };
     const result = {
-      optionSets: data.optionSets || [],
-      optionValues: data.optionValues || []
+      opsets: data.opsets || [],
+      opvalues: data.opvalues || []
     };
     console.log('SafeData:', result);
     return result;
@@ -105,8 +105,8 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
 
   useEffect(() => {
     // Load option values when data is available
-    if (safeData.optionValues && safeData.optionValues.length > 0) {
-      const loadedValues = safeData.optionValues
+    if (safeData.opvalues && safeData.opvalues.length > 0) {
+      const loadedValues = safeData.opvalues
         .map((value: any) => ({
           id: value.id,
           name: value.name,
@@ -162,7 +162,7 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
     try {
       // Update or create the option set
       await db.transact([
-        db.tx.optionSets[setId].update({
+        db.tx.opsets[setId].update({
           name: trimmedSetName,
           storeId: currentStore.id,
         })
@@ -181,7 +181,7 @@ export default function OptionSetEditScreen({ setId, setName, onClose }: OptionS
           const groupValues = groupedValues[value.group];
           const orderInGroup = groupValues.findIndex(v => v.id === value.id);
 
-          return db.tx.optionValues[value.id].update({
+          return db.tx.opvalues[value.id].update({
             setId: setId,
             name: value.name,
             identifierType: value.identifierType,

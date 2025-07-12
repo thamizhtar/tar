@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Text, View, TouchableOpacity, BackHandler } from "react-native";
+import { Text, View, TouchableOpacity, BackHandler, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from '@expo/vector-icons';
 import ProductsScreen from "../components/products";
@@ -11,6 +11,7 @@ import CollectionsManagementScreen from "../components/col-mgmt";
 import SpaceScreen from "../components/space";
 import SalesScreen from "../components/sales";
 import ReportsScreen from "../components/reports";
+import ItemStock from "../components/item-stock";
 import FullScreenMenu from "../components/menu";
 import Options from "../components/options";
 import MetafieldsSystem from "../components/metafields-system";
@@ -47,6 +48,8 @@ export default function Page() {
   const [productFormHasChanges, setProductFormHasChanges] = useState(false); // Track if product form has unsaved changes
   const [collectionFormCollection, setCollectionFormCollection] = useState<any>(null); // Track collection being edited in form
   const [isCollectionFormOpen, setIsCollectionFormOpen] = useState(false); // Track if collection form is open
+  const [isItemStockOpen, setIsItemStockOpen] = useState(false); // Track if item stock screen is open
+  const [itemStockItem, setItemStockItem] = useState<any>(null); // Track item being managed in stock screen
   const [optionSetData, setOptionSetData] = useState<{id?: string, name?: string}>({});
   const [navigationData, setNavigationData] = useState<any>(null);
 
@@ -100,6 +103,12 @@ export default function Page() {
       if (isCollectionFormOpen) {
         setCollectionFormCollection(null);
         setIsCollectionFormOpen(false);
+        return true;
+      }
+
+      // If item stock screen is open, close it
+      if (isItemStockOpen) {
+        closeItemStock();
         return true;
       }
 
@@ -171,7 +180,7 @@ export default function Page() {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
 
     return () => backHandler.remove();
-  }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen, isCollectionFormOpen, handleGoBack]);
+  }, [currentScreen, showManagement, showBottomTabs, isProductFormOpen, isCollectionFormOpen, isItemStockOpen, handleGoBack, closeItemStock]);
 
   // Form handlers
   const openProductForm = useCallback((product?: any) => {
@@ -193,6 +202,16 @@ export default function Page() {
   const closeCollectionForm = useCallback(() => {
     setCollectionFormCollection(null);
     setIsCollectionFormOpen(false);
+  }, []);
+
+  const openItemStock = useCallback((item?: any) => {
+    setItemStockItem(item || null);
+    setIsItemStockOpen(true);
+  }, []);
+
+  const closeItemStock = useCallback(() => {
+    setItemStockItem(null);
+    setIsItemStockOpen(false);
   }, []);
 
   const handleNavigate = useCallback((screen: Screen, data?: any) => {
@@ -291,6 +310,19 @@ export default function Page() {
       );
     }
 
+    // If item stock screen is open, render it full screen
+    if (isItemStockOpen) {
+      return (
+        <ItemStock
+          item={itemStockItem}
+          onClose={closeItemStock}
+          onSave={() => {
+            // Refresh will happen automatically due to real-time updates
+          }}
+        />
+      );
+    }
+
     // For products and collections screens, check if we should show management view
     if (currentScreen === 'products' && showManagement) {
       return <ProductsManagementScreen />;
@@ -352,6 +384,15 @@ export default function Page() {
       case 'items':
         return <ItemsScreen
           isGridView={isGridView}
+          onItemFormOpen={(item) => {
+            // Check if this is an inventory request
+            if (item?.openInventory) {
+              openItemStock(item);
+            } else {
+              // Handle regular item form opening if needed
+              console.log('Regular item form open:', item);
+            }
+          }}
           onClose={() => {
             // If items screen was opened from product form, go back to product form
             if (navigationData?.productId) {
@@ -384,7 +425,7 @@ export default function Page() {
     <StoreProvider>
       <ErrorBoundary>
         <View className="flex flex-1">
-          {currentScreen === 'menu' || currentScreen === 'options' || currentScreen === 'metafields' || currentScreen === 'items' || currentScreen === 'locations' || isProductFormOpen || isCollectionFormOpen ? (
+          {currentScreen === 'menu' || currentScreen === 'options' || currentScreen === 'metafields' || currentScreen === 'items' || currentScreen === 'locations' || isProductFormOpen || isCollectionFormOpen || isItemStockOpen ? (
             // Full screen screens without header or bottom navigation (including product and collection forms)
             <ErrorBoundary>
               {renderMainContent()}

@@ -137,7 +137,7 @@ export async function migrateItemsToLocationSystem(storeId: string): Promise<voi
         try {
           // Check if item location already exists
           const existingItemLocation = await db.queryOnce({
-            itemLocations: {
+            ilocations: {
               $: {
                 where: {
                   itemId: item.id,
@@ -147,7 +147,7 @@ export async function migrateItemsToLocationSystem(storeId: string): Promise<voi
             }
           });
 
-          if (existingItemLocation.data.itemLocations && existingItemLocation.data.itemLocations.length > 0) {
+          if (existingItemLocation.data.ilocations && existingItemLocation.data.ilocations.length > 0) {
             console.log(`Item ${item.id} already has location record, skipping`);
             continue;
           }
@@ -160,7 +160,7 @@ export async function migrateItemsToLocationSystem(storeId: string): Promise<voi
 
           // Create item location record
           transactions.push(
-            db.tx.itemLocations[itemLocationId].update({
+            db.tx.ilocations[itemLocationId].update({
               itemId: item.id,
               locationId: defaultLocationId,
               storeId: storeId,
@@ -224,7 +224,7 @@ export function calculateAvailable(itemLocation: ItemLocation): number {
 export async function updateItemTotals(itemId: string): Promise<void> {
   try {
     const itemLocations = await db.queryOnce({
-      itemLocations: {
+      ilocations: {
         $: {
           where: {
             itemId: itemId
@@ -233,11 +233,11 @@ export async function updateItemTotals(itemId: string): Promise<void> {
       }
     });
 
-    if (!itemLocations.data.itemLocations) {
+    if (!itemLocations.data.ilocations) {
       return;
     }
 
-    const totals = itemLocations.data.itemLocations.reduce(
+    const totals = itemLocations.data.ilocations.reduce(
       (acc, loc) => ({
         totalOnHand: acc.totalOnHand + (loc.onHand || 0),
         totalAvailable: acc.totalAvailable + calculateAvailable(loc),
@@ -295,7 +295,7 @@ export async function createInventoryAdjustment(
     };
 
     await db.transact([
-      db.tx.inventoryAdjustments[adjustmentId].update(adjustmentData)
+      db.tx.iadjust[adjustmentId].update(adjustmentData)
     ]);
   } catch (error) {
     console.error('Failed to create inventory adjustment:', error);
@@ -332,7 +332,7 @@ export async function getStoreLocations(storeId: string): Promise<Location[]> {
 export async function getItemStock(itemId: string): Promise<ItemLocation[]> {
   try {
     const result = await db.queryOnce({
-      itemLocations: {
+      ilocations: {
         $: {
           where: {
             itemId: itemId
@@ -342,7 +342,7 @@ export async function getItemStock(itemId: string): Promise<ItemLocation[]> {
       }
     });
 
-    return result.data.itemLocations || [];
+    return result.data.ilocations || [];
   } catch (error) {
     console.error('Failed to get item stock:', error);
     return [];

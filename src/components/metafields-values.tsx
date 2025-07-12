@@ -43,7 +43,7 @@ export default function MetafieldValues({
   // Query metafield sets for this category
   const { data: definitionsData } = db.useQuery(
     currentStore?.id ? {
-      metafieldSets: {
+      metasets: {
         $: {
           where: {
             storeId: currentStore.id,
@@ -71,8 +71,8 @@ export default function MetafieldValues({
 
   // Load definitions
   useEffect(() => {
-    if (definitionsData?.metafieldSets) {
-      const defs = definitionsData.metafieldSets.map(field => ({
+    if (definitionsData?.metasets) {
+      const defs = definitionsData.metasets.map(field => ({
         id: field.id,
         title: field.name || '',
         name: field.name || '',

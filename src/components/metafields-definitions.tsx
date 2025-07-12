@@ -50,7 +50,7 @@ export default function MetafieldDefinitions({
   // Query metafield sets for this category
   const { data: metafieldsData } = db.useQuery(
     currentStore?.id ? {
-      metafieldSets: {
+      metasets: {
         $: {
           where: {
             storeId: currentStore.id,
@@ -63,8 +63,8 @@ export default function MetafieldDefinitions({
 
   // Load definitions
   useEffect(() => {
-    if (metafieldsData?.metafieldSets) {
-      const defs = metafieldsData.metafieldSets.map(field => ({
+    if (metafieldsData?.metasets) {
+      const defs = metafieldsData.metasets.map(field => ({
         id: field.id,
         title: field.name || '',
         name: field.name || '',

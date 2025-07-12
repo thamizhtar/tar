@@ -76,13 +76,13 @@ export default function OptionValuesSelector({
   // Query option values for the current option set
   const { data: optionValuesData } = db.useQuery(
     optionSet?.id && currentStore?.id ? {
-      optionValues: {
+      opvalues: {
         $: { where: { setId: optionSet.id, storeId: currentStore.id } }
       }
     } : {}
   );
 
-  const optionValues = optionValuesData?.optionValues || [];
+  const optionValues = optionValuesData?.opvalues || [];
 
   // Group values by their group field
   const groupedValues = React.useMemo(() => {

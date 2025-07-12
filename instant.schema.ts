@@ -83,7 +83,7 @@ const _schema = i.schema({
       type: i.string().optional(),
       url: i.string().optional(),
     }),
-    metafieldSets: i.entity({
+    metasets: i.entity({
       category: i.string().indexed(),
       createdAt: i.date(),
       group: i.string().optional(),
@@ -103,7 +103,7 @@ const _schema = i.schema({
       parentid: i.string().optional(),
       updatedAt: i.date(),
     }),
-    metafieldValues: i.entity({
+    metavalues: i.entity({
       id: i.string().unique().indexed(),
       setId: i.string().indexed(),
       entityId: i.string().indexed(),
@@ -121,13 +121,13 @@ const _schema = i.schema({
       type: i.string().optional(),
       value: i.number().optional(),
     }),
-    optionSets: i.entity({
+    opsets: i.entity({
       createdAt: i.date().optional(),
       name: i.string(),
       storeId: i.string().indexed(),
       updatedAt: i.date().optional(),
     }),
-    optionValues: i.entity({
+    opvalues: i.entity({
       createdAt: i.date(),
       group: i.string().optional(),
       identifierType: i.string(),
@@ -270,7 +270,7 @@ const _schema = i.schema({
     }),
 
     // Per-location inventory levels (core table)
-    itemLocations: i.entity({
+    ilocations: i.entity({
       itemId: i.string().indexed(),
       locationId: i.string().indexed(),
       storeId: i.string().indexed(),
@@ -292,7 +292,7 @@ const _schema = i.schema({
     }),
 
     // Inventory adjustment history
-    inventoryAdjustments: i.entity({
+    iadjust: i.entity({
       storeId: i.string().indexed(),
       itemId: i.string().indexed(),
       locationId: i.string().indexed(),
@@ -363,50 +363,50 @@ const _schema = i.schema({
         label: "product",
       },
     },
-    itemsItemLocations: {
+    itemsIlocations: {
       forward: {
         on: "items",
         has: "many",
-        label: "itemLocations",
+        label: "ilocations",
       },
       reverse: {
-        on: "itemLocations",
+        on: "ilocations",
         has: "one",
         label: "item",
       },
     },
-    locationsItemLocations: {
+    locationsIlocations: {
       forward: {
         on: "locations",
         has: "many",
-        label: "itemLocations",
+        label: "ilocations",
       },
       reverse: {
-        on: "itemLocations",
+        on: "ilocations",
         has: "one",
         label: "location",
       },
     },
-    itemsInventoryAdjustments: {
+    itemsIadjust: {
       forward: {
         on: "items",
         has: "many",
-        label: "inventoryAdjustments",
+        label: "iadjust",
       },
       reverse: {
-        on: "inventoryAdjustments",
+        on: "iadjust",
         has: "one",
         label: "item",
       },
     },
-    locationsInventoryAdjustments: {
+    locationsIadjust: {
       forward: {
         on: "locations",
         has: "many",
-        label: "inventoryAdjustments",
+        label: "iadjust",
       },
       reverse: {
-        on: "inventoryAdjustments",
+        on: "iadjust",
         has: "one",
         label: "location",
       },

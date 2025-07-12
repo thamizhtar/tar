@@ -487,23 +487,9 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
                     {selectedView === 'stock' && (
                       <TouchableOpacity
                         onPress={() => {
-                          Alert.prompt(
-                            'Update Stock',
-                            'Enter stock quantity:',
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              {
-                                text: 'Update',
-                                onPress: (newStock) => {
-                                  if (newStock && !isNaN(Number(newStock))) {
-                                    db.transact(db.tx.items[item.id].update({ onhand: Number(newStock) }));
-                                  }
-                                }
-                              }
-                            ],
-                            'plain-text',
-                            String(item.onhand || 0)
-                          );
+                          if (onItemFormOpen) {
+                            onItemFormOpen({ ...item, openInventory: true });
+                          }
                         }}
                         style={{
                           backgroundColor: '#F9FAFB',
@@ -515,7 +501,7 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
                         }}
                       >
                         <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
-                          {item.onhand || 0}
+                          {item.totalOnHand || item.onhand || 0}
                         </Text>
                       </TouchableOpacity>
                     )}

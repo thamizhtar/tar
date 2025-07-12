@@ -77,10 +77,10 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
   // Query option sets and values for the current store
   const { data: optionSetsData } = db.useQuery(
     currentStore?.id ? {
-      optionSets: {
+      opsets: {
         $: { where: { storeId: currentStore.id } }
       },
-      optionValues: {
+      opvalues: {
         $: { where: { storeId: currentStore.id } }
       }
     } : {}
@@ -98,7 +98,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
   // Query metafield definitions for products
   const { data: metafieldDefinitionsData } = db.useQuery(
     currentStore?.id ? {
-      metafieldSets: {
+      metasets: {
         $: {
           where: {
             storeId: currentStore.id,
@@ -216,15 +216,15 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
 
   // Memoized computations for better performance
   const selectedMetafields = useMemo(() => {
-    if (!metafieldDefinitionsData?.metafieldSets) return [];
-    return metafieldDefinitionsData.metafieldSets.filter((def: any) =>
+    if (!metafieldDefinitionsData?.metasets) return [];
+    return metafieldDefinitionsData.metasets.filter((def: any) =>
       selectedMetafieldIds.includes(def.id)
     );
-  }, [metafieldDefinitionsData?.metafieldSets, selectedMetafieldIds]);
+  }, [metafieldDefinitionsData?.metasets, selectedMetafieldIds]);
 
   const groupedMetafields = useMemo(() => {
-    if (!metafieldDefinitionsData?.metafieldSets) return {};
-    return (metafieldDefinitionsData.metafieldSets as any[]).reduce((acc: Record<string, any>, field: any) => {
+    if (!metafieldDefinitionsData?.metasets) return {};
+    return (metafieldDefinitionsData.metasets as any[]).reduce((acc: Record<string, any>, field: any) => {
       const groupName = field.group || 'Ungrouped';
       if (!acc[groupName]) {
         acc[groupName] = [];
@@ -232,7 +232,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
       acc[groupName].push(field);
       return acc;
     }, {} as Record<string, any>);
-  }, [metafieldDefinitionsData?.metafieldSets]);
+  }, [metafieldDefinitionsData?.metasets]);
 
   // Memoized placeholder function for better performance
   const getFieldPlaceholder = useCallback((type: string) => {
@@ -304,7 +304,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
           const setIds = new Set<string>();
 
           // Get all option values to find which sets they belong to
-          const allOptionValues = optionSetsData?.optionValues || [];
+          const allOptionValues = optionSetsData?.opvalues || [];
 
           optionsData.forEach((groupData: any) => {
             if (groupData.values && Array.isArray(groupData.values)) {
@@ -329,7 +329,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
     } else {
       setSelectedOptionSets([]);
     }
-  }, [product?.options, optionSetsData?.optionValues]);
+  }, [product?.options, optionSetsData?.opvalues]);
 
   // Update options in form data when selection changes
   useEffect(() => {
@@ -384,7 +384,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
 
   // Initialize metafield values and selected fields from product data
   useEffect(() => {
-    if (product?.metafields && metafieldDefinitionsData?.metafieldSets) {
+    if (product?.metafields && metafieldDefinitionsData?.metasets) {
       const values: Record<string, any> = {};
       const selectedIds: string[] = [];
 
@@ -394,7 +394,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
           values[fieldName] = fieldData.value;
 
           // Find the field definition and add its ID to selected
-          const definition = metafieldDefinitionsData.metafieldSets.find((def: any) =>
+          const definition = metafieldDefinitionsData.metasets.find((def: any) =>
             (def.name || def.title) === fieldName
           );
           if (definition?.id && !selectedIds.includes(definition.id)) {
@@ -489,11 +489,11 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
     const originalValues: Record<string, any> = {};
 
     // Extract original field IDs and values
-    if (metafieldDefinitionsData?.metafieldSets) {
+    if (metafieldDefinitionsData?.metasets) {
       Object.entries(originalMetafields).forEach(([fieldName, fieldData]: [string, any]) => {
         if (fieldData?.value !== undefined) {
           originalValues[fieldName] = fieldData.value;
-          const definition = metafieldDefinitionsData.metafieldSets.find((def: any) =>
+          const definition = metafieldDefinitionsData.metasets.find((def: any) =>
             (def.name || def.title) === fieldName
           );
           if (definition?.id && !originalIds.includes(definition.id)) {
@@ -561,8 +561,8 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
       setSelectedMetafieldIds(prev => [...prev, fieldId]);
 
       // Initialize default value for newly selected field
-      if (metafieldDefinitionsData?.metafieldSets) {
-        const field = metafieldDefinitionsData.metafieldSets.find((def: any) => def.id === fieldId);
+      if (metafieldDefinitionsData?.metasets) {
+        const field = metafieldDefinitionsData.metasets.find((def: any) => def.id === fieldId);
         if (field) {
           const fieldName = field.name || (field as any).title;
           if (!metafieldValues[fieldName]) {
@@ -579,7 +579,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
     if (!isInitializing && isDataLoaded) {
       setHasChanges(true);
     }
-  }, [selectedMetafieldIds, metafieldDefinitionsData?.metafieldSets, metafieldValues, isInitializing, isDataLoaded]);
+  }, [selectedMetafieldIds, metafieldDefinitionsData?.metasets, metafieldValues, isInitializing, isDataLoaded]);
 
   const handleSelectAllMetafields = useCallback((groupName: string) => {
     const fieldsInGroup = groupedMetafields[groupName] || [];
@@ -642,7 +642,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
       const optionArrays: any[][] = [];
 
       for (const setId of optionSetNames.slice(0, 3)) { // Limit to 3 option sets (option1, option2, option3)
-        const setOptions = optionSetsData?.optionValues?.filter(
+        const setOptions = optionSetsData?.opvalues?.filter(
           (option: any) => option.setId === setId
         ) || [];
 
@@ -1533,7 +1533,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
                 </Text>
                 <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
                   {(() => {
-                    const optionSets = optionSetsData?.optionSets || [];
+                    const optionSets = optionSetsData?.opsets || [];
                     const productOptionSets = optionSets.filter(set =>
                       selectedOptionSets.includes(set.id)
                     );
@@ -2435,10 +2435,10 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
             {(() => {
               // Process option sets from data
               const optionSets = React.useMemo(() => {
-                if (!optionSetsData?.optionSets || !optionSetsData?.optionValues) return [];
+                if (!optionSetsData?.opsets || !optionSetsData?.opvalues) return [];
 
-                return optionSetsData.optionSets.map((set: any) => {
-                  const values = optionSetsData.optionValues
+                return optionSetsData.opsets.map((set: any) => {
+                  const values = optionSetsData.opvalues
                     .filter((value: any) => value.setId === set.id)
                     .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
@@ -2448,7 +2448,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
                     values: values
                   };
                 });
-              }, [optionSetsData?.optionSets, optionSetsData?.optionValues]);
+              }, [optionSetsData?.opsets, optionSetsData?.opvalues]);
 
               if (optionSets.length === 0) {
                 return (
@@ -2658,7 +2658,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
           {/* Content */}
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
             {(() => {
-              if (!metafieldDefinitionsData?.metafieldSets || metafieldDefinitionsData.metafieldSets.length === 0) {
+              if (!metafieldDefinitionsData?.metasets || metafieldDefinitionsData.metasets.length === 0) {
                 return (
                   <View style={{
                     flex: 1,

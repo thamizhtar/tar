@@ -39,30 +39,30 @@ export default function OptionSetsScreen({ onNavigateToEdit, onClose }: OptionSe
   // Get option sets from database
   const { data, isLoading, error } = db.useQuery(
     currentStore?.id ? {
-      optionSets: {
+      opsets: {
         $: { where: { storeId: currentStore.id } }
       },
-      optionValues: {
+      opvalues: {
         $: { where: { storeId: currentStore.id } }
       }
     } : {}
   );
 
-  // Handle case where optionSets table doesn't exist yet
+  // Handle case where opsets table doesn't exist yet
   const safeData = React.useMemo(() => {
-    if (!data) return { optionSets: [], optionValues: [] };
+    if (!data) return { opsets: [], opvalues: [] };
     return {
-      optionSets: data.optionSets || [],
-      optionValues: data.optionValues || []
+      opsets: data.opsets || [],
+      opvalues: data.opvalues || []
     };
   }, [data]);
 
   // Process data into option sets
   const optionSets: OptionSet[] = React.useMemo(() => {
-    if (isLoading || !safeData.optionSets) return [];
+    if (isLoading || !safeData.opsets) return [];
 
-    return safeData.optionSets.map(set => {
-      const valueCount = safeData.optionValues?.filter(value => value.setId === set.id).length || 0;
+    return safeData.opsets.map(set => {
+      const valueCount = safeData.opvalues?.filter(value => value.setId === set.id).length || 0;
       return {
         id: set.id,
         name: set.name,
@@ -83,7 +83,7 @@ export default function OptionSetsScreen({ onNavigateToEdit, onClose }: OptionSe
       const setId = id();
 
       await db.transact([
-        db.tx.optionSets[setId].update({
+        db.tx.opsets[setId].update({
           name: 'New Option Set',
           storeId: currentStore.id,
         })

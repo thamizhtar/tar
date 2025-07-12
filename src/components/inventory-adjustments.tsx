@@ -90,7 +90,7 @@ export default function InventoryAdjustments({ onClose, onNavigate }: InventoryA
     try {
       setLoading(true);
       const result = await db.queryOnce({
-        itemLocations: {
+        ilocations: {
           $: {
             where: {
               storeId: currentStore.id
@@ -103,7 +103,7 @@ export default function InventoryAdjustments({ onClose, onNavigate }: InventoryA
         }
       });
 
-      setItemLocations(result.itemLocations || []);
+      setItemLocations(result.ilocations || []);
     } catch (error) {
       console.error('Failed to load item locations:', error);
       Alert.alert('Error', 'Failed to load inventory data');
@@ -165,7 +165,7 @@ export default function InventoryAdjustments({ onClose, onNavigate }: InventoryA
 
       // Update item location
       await db.transact([
-        db.tx.itemLocations[selectedItem.id].update({
+        db.tx.ilocations[selectedItem.id].update({
           onHand: newQuantity,
           updatedAt: timestamp
         })
