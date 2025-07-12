@@ -174,10 +174,10 @@ export default function ProductsScreen({ isGridView = false, onProductFormOpen, 
 
       // Search filter - handle tags as array
       const tagsString = Array.isArray(tags) ? tags.join(' ') : (typeof tags === 'string' ? tags : '');
-      const matchesSearch = title?.toLowerCase().includes(searchTerm) ||
-             category?.toLowerCase().includes(searchTerm) ||
-             brand?.toLowerCase().includes(searchTerm) ||
-             tagsString?.toLowerCase().includes(searchTerm);
+      const matchesSearch = (title || '').toLowerCase().includes(searchTerm) ||
+             (category || '').toLowerCase().includes(searchTerm) ||
+             (brand || '').toLowerCase().includes(searchTerm) ||
+             (tagsString || '').toLowerCase().includes(searchTerm);
 
       // Status filter - Simple and intuitive
       let matchesStatus = true;

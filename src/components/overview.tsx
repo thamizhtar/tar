@@ -119,12 +119,12 @@ export default function Overview({ onClose, onNavigate }: OverviewProps) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(item => {
         const searchableText = [
-          item.sku,
-          item.product?.title,
-          item.option1,
-          item.option2,
-          item.option3
-        ].filter(Boolean).join(' ').toLowerCase();
+          item.sku || '',
+          (item.product && item.product.title) ? item.product.title : '',
+          item.option1 || '',
+          item.option2 || '',
+          item.option3 || ''
+        ].join(' ').toLowerCase();
 
         return searchableText.includes(query);
       });

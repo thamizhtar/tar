@@ -162,7 +162,7 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
         (item.option1 || '').toLowerCase().includes(query) ||
         (item.option2 || '').toLowerCase().includes(query) ||
         (item.option3 || '').toLowerCase().includes(query) ||
-        (item.product?.[0]?.title || '').toLowerCase().includes(query)
+        ((item.product && item.product[0] && item.product[0].title) ? item.product[0].title.toLowerCase() : '').includes(query)
       );
     }
 

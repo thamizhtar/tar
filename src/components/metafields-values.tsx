@@ -350,7 +350,7 @@ export default function MetafieldValues({
             textAlign: 'center',
             lineHeight: 20,
           }}>
-            Create metafield definitions for {entityTypeInfo?.name?.toLowerCase() || entityType} to start adding custom data.
+            Create metafield definitions for {(entityTypeInfo?.name || '').toLowerCase() || entityType} to start adding custom data.
           </Text>
         </View>
       ) : (

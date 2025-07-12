@@ -87,10 +87,10 @@ export default function OrdersScreen({ onCreateOrder, onOrderSelect, onClose }: 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((order: Order) =>
-        order.orderNumber?.toLowerCase().includes(query) ||
-        order.customerName?.toLowerCase().includes(query) ||
-        order.customer?.[0]?.name?.toLowerCase().includes(query) ||
-        order.customer?.[0]?.email?.toLowerCase().includes(query)
+        (order.orderNumber || '').toLowerCase().includes(query) ||
+        (order.customerName || '').toLowerCase().includes(query) ||
+        ((order.customer && order.customer[0] && order.customer[0].name) ? order.customer[0].name.toLowerCase() : '').includes(query) ||
+        ((order.customer && order.customer[0] && order.customer[0].email) ? order.customer[0].email.toLowerCase() : '').includes(query)
       );
     }
 

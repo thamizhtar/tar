@@ -78,7 +78,7 @@ export default function OrderDetails({ order, onClose }: OrderDetailsProps) {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch ((status || '').toLowerCase()) {
       case 'open':
         return 'text-blue-600 bg-blue-100';
       case 'fulfilled':

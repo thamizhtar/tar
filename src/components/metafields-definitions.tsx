@@ -417,7 +417,7 @@ export default function MetafieldDefinitions({
                 marginBottom: 24,
                 lineHeight: 20,
               }}>
-                Create custom fields to store additional information for your {entityTypeInfo?.name?.toLowerCase() || entityType}.
+                Create custom fields to store additional information for your {(entityTypeInfo?.name || '').toLowerCase() || entityType}.
               </Text>
               <TouchableOpacity
                 onPress={() => {

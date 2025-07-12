@@ -63,7 +63,7 @@ export default function TagSelect({ selectedTags = [], onSelect, onClose }: TagS
 
   // Filter tags based on search query
   const filteredTags = tags.filter(tag =>
-    (tag.name || '').toLowerCase().includes(searchQuery.toLowerCase())
+    (tag.name || '').toLowerCase().includes((searchQuery || '').toLowerCase())
   );
 
   const handleSelectTag = (tag: TagItem) => {

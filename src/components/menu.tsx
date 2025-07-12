@@ -117,7 +117,7 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
                 />
               </View>
               <Text className="text-lg font-bold text-gray-900">
-                {userData.status.toLowerCase()}
+                {(userData.status || '').toLowerCase()}
               </Text>
             </View>
           </View>

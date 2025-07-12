@@ -78,14 +78,14 @@ export default function OrderProductSelect({ onProductsSelect, onClose }: OrderP
     
     const query = searchQuery.toLowerCase();
     return products.filter((product: Product) =>
-      product.title?.toLowerCase().includes(query) ||
-      product.category?.toLowerCase().includes(query) ||
-      product.brand?.toLowerCase().includes(query) ||
-      product.item?.some(item => 
-        item.sku?.toLowerCase().includes(query) ||
-        item.option1?.toLowerCase().includes(query) ||
-        item.option2?.toLowerCase().includes(query) ||
-        item.option3?.toLowerCase().includes(query)
+      (product.title || '').toLowerCase().includes(query) ||
+      (product.category || '').toLowerCase().includes(query) ||
+      (product.brand || '').toLowerCase().includes(query) ||
+      (product.item || []).some(item => 
+        (item.sku || '').toLowerCase().includes(query) ||
+        (item.option1 || '').toLowerCase().includes(query) ||
+        (item.option2 || '').toLowerCase().includes(query) ||
+        (item.option3 || '').toLowerCase().includes(query)
       )
     );
   }, [products, searchQuery]);

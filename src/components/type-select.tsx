@@ -85,7 +85,7 @@ export default function TypeSelect({ selectedType, onSelect, onClose }: TypeSele
   }
 
   const filteredTypes = types.filter(type =>
-    type.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    (type.name || '').toLowerCase().includes((searchQuery || '').toLowerCase())
   );
 
   const handleAddType = async () => {

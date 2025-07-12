@@ -83,7 +83,7 @@ export default function VendorSelect({ selectedVendor, onSelect, onClose }: Vend
   }
 
   const filteredVendors = vendors.filter(vendor =>
-    vendor.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    (vendor.name || '').toLowerCase().includes((searchQuery || '').toLowerCase())
   );
 
   const handleAddVendor = async () => {
