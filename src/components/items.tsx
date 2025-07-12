@@ -5,6 +5,7 @@ import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-ico
 import { db, formatCurrency } from '../lib/instant';
 import { useStore } from '../lib/store-context';
 import { log, trackError } from '../lib/logger';
+import PricingForm from './pricing-form';
 import { LoadingError, EmptyState } from './ui/error-boundary';
 
 import R2Image from './ui/r2-image';
@@ -129,6 +130,8 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [selectedView, setSelectedView] = useState<'stock' | 'pricing' | 'image'>('stock');
+  const [showPricingForm, setShowPricingForm] = useState(false);
+  const [selectedItemForPricing, setSelectedItemForPricing] = useState<any>(null);
 
 
   // Query items from database - filter by productId if provided
@@ -508,23 +511,8 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
                     {selectedView === 'pricing' && (
                       <TouchableOpacity
                         onPress={() => {
-                          Alert.prompt(
-                            'Update Sale Price',
-                            'Enter sale price:',
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              {
-                                text: 'Update',
-                                onPress: (newPrice) => {
-                                  if (newPrice && !isNaN(Number(newPrice))) {
-                                    db.transact(db.tx.items[item.id].update({ saleprice: Number(newPrice) }));
-                                  }
-                                }
-                              }
-                            ],
-                            'plain-text',
-                            String(item.saleprice || item.price || 0)
-                          );
+                          setSelectedItemForPricing(item);
+                          setShowPricingForm(true);
                         }}
                         style={{
                           backgroundColor: '#F9FAFB',
@@ -620,6 +608,30 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
           </View>
         </View>
       )}
+
+      {/* Pricing Form Modal */}
+      <PricingForm
+        visible={showPricingForm}
+        onClose={() => {
+          setShowPricingForm(false);
+          setSelectedItemForPricing(null);
+        }}
+        onSave={(pricing) => {
+          if (selectedItemForPricing) {
+            db.transact(db.tx.items[selectedItemForPricing.id].update({
+              cost: pricing.cost,
+              price: pricing.price,
+              saleprice: pricing.saleprice
+            }));
+          }
+        }}
+        initialValues={selectedItemForPricing ? {
+          cost: selectedItemForPricing.cost || 0,
+          price: selectedItemForPricing.price || 0,
+          saleprice: selectedItemForPricing.saleprice || 0
+        } : undefined}
+        title="Update Item Pricing"
+      />
     </View>
   );
 }

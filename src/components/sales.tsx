@@ -10,6 +10,7 @@ import { useStore } from '../lib/store-context';
 import { hapticFeedback, withHapticFeedback } from '../lib/haptics';
 import OrdersScreen from './orders';
 import OrderCreate from './order-create';
+import OrderDetails from './order-details';
 
 interface Order {
   id: string;
@@ -34,7 +35,7 @@ interface SalesScreenProps {
 export default function SalesScreen({ onOpenMenu }: SalesScreenProps) {
   const insets = useSafeAreaInsets();
   const { currentStore } = useStore();
-  const [currentView, setCurrentView] = useState<'dashboard' | 'orders' | 'create-order'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'orders' | 'create-order' | 'order-details'>('dashboard');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Handle back button for sub-screens
@@ -140,7 +141,7 @@ export default function SalesScreen({ onOpenMenu }: SalesScreenProps) {
 
   const handleOrderSelect = (order: Order) => {
     setSelectedOrder(order);
-    // Navigate to order details (to be implemented)
+    setCurrentView('order-details');
   };
 
   // Render different views based on current state
@@ -163,18 +164,21 @@ export default function SalesScreen({ onOpenMenu }: SalesScreenProps) {
     );
   }
 
-  // Main sales dashboard
-  return (
-    <View className="flex-1 bg-gray-50">
-      {/* Modern Top Bar */}
-      <TopBar
-        title="Sales"
-        subtitle="Track your sales performance"
-        rightAction={{
-          icon: "menu",
-          onPress: onOpenMenu || (() => {})
+  if (currentView === 'order-details' && selectedOrder) {
+    return (
+      <OrderDetails
+        order={selectedOrder}
+        onClose={() => {
+          setCurrentView('dashboard');
+          setSelectedOrder(null);
         }}
       />
+    );
+  }
+
+  // Main sales dashboard
+  return (
+    <View className="flex-1 bg-gray-50" style={{ paddingTop: insets.top }}>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Modern Sales Overview */}
