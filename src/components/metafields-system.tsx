@@ -52,7 +52,7 @@ export default function MetafieldsSystem({
   // Query metafield sets count for each category
   const { data: metafieldsData } = db.useQuery(
     currentStore?.id ? {
-      metafieldSets: {
+      metasets: {
         $: {
           where: {
             storeId: currentStore.id
@@ -67,8 +67,8 @@ export default function MetafieldsSystem({
     const counts: Record<string, number> = {};
 
     // Count metafield sets per category
-    if (metafieldsData?.metafieldSets) {
-      metafieldsData.metafieldSets.forEach(set => {
+    if (metafieldsData?.metasets) {
+      metafieldsData.metasets.forEach(set => {
         if (set && (set as any).category) {
           counts[(set as any).category] = (counts[(set as any).category] || 0) + 1;
         }

@@ -57,7 +57,7 @@ export default function MetafieldValues({
   // Query metafield values for this specific entity
   const { data: valuesData } = db.useQuery(
     currentStore?.id && entityId ? {
-      metafieldValues: {
+      metavalues: {
         $: {
           where: {
             storeId: currentStore.id,
@@ -99,9 +99,9 @@ export default function MetafieldValues({
 
   // Load values
   useEffect(() => {
-    if (valuesData?.metafieldValues) {
+    if (valuesData?.metavalues) {
       const vals: Record<string, MetafieldValue> = {};
-      valuesData.metafieldValues.forEach((field: any) => {
+      valuesData.metavalues.forEach((field: any) => {
         if (field?.setId) {
           vals[field.setId] = {
             id: field.id,
@@ -146,7 +146,7 @@ export default function MetafieldValues({
       };
 
       await db.transact(
-        db.tx.metafieldValues[valueId].update(data)
+        db.tx.metavalues[valueId].update(data)
       );
 
       setShowValueModal(false);
@@ -165,7 +165,7 @@ export default function MetafieldValues({
     }
 
     try {
-      await db.transact(db.tx.metafieldValues[valueId].delete());
+      await db.transact(db.tx.metavalues[valueId].delete());
     } catch (error) {
       Alert.alert('Error', 'Failed to delete metafield value');
     }

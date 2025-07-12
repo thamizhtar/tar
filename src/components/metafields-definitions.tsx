@@ -122,7 +122,7 @@ export default function MetafieldDefinitions({
       };
 
       await db.transact(
-        db.tx.metafieldSets[definitionId].update(data)
+        db.tx.metasets[definitionId].update(data)
       );
 
       setEditingDefinition(null);
@@ -140,7 +140,7 @@ export default function MetafieldDefinitions({
     }
 
     try {
-      await db.transact(db.tx.metafieldSets[definitionId].delete());
+      await db.transact(db.tx.metasets[definitionId].delete());
     } catch (error) {
       Alert.alert('Error', 'Failed to delete metafield set');
     }
@@ -155,7 +155,7 @@ export default function MetafieldDefinitions({
     try {
       const groupDefinitions = definitions.filter(def => def.name === groupName);
       const deleteTransactions = groupDefinitions.map(def =>
-        db.tx.metafieldSets[def.id].delete()
+        db.tx.metasets[def.id].delete()
       );
 
       for (const transaction of deleteTransactions) {
