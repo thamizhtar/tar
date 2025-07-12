@@ -60,9 +60,9 @@ export default function CustomerSelect({ selectedCustomer, onCustomerSelect, onC
   const filteredCustomers = customers.filter((customer: Customer) => {
     const query = searchQuery.toLowerCase();
     return (
-      customer.name?.toLowerCase().includes(query) ||
-      customer.email?.toLowerCase().includes(query) ||
-      customer.phone?.toLowerCase().includes(query)
+      (customer.name || '').toLowerCase().includes(query) ||
+      (customer.email || '').toLowerCase().includes(query) ||
+      (customer.phone || '').toLowerCase().includes(query)
     );
   });
 

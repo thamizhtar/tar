@@ -21,7 +21,8 @@ export default function StoreSelector({ onCreateStore, onEditStores }: StoreSele
     }
   };
 
-  const getStoreInitials = (name: string) => {
+  const getStoreInitials = (name: string | undefined) => {
+    if (!name) return 'ST';
     return name
       .split(' ')
       .map(word => word.charAt(0))
@@ -71,7 +72,7 @@ export default function StoreSelector({ onCreateStore, onEditStores }: StoreSele
 
             {/* Store Info */}
             <Text className="flex-1 text-lg font-medium text-gray-900">
-              {currentStore.name}
+              {currentStore.name || 'Unnamed Store'}
             </Text>
 
             {/* Dropdown Arrow */}

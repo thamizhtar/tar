@@ -736,7 +736,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
           const timestamp = new Date().toISOString();
 
           await db.transact([
-            db.tx.itemLocations[itemLocationId].update({
+            db.tx.ilocations[itemLocationId].update({
               itemId: itemId,
               locationId: defaultLocationId,
               storeId: currentStore.id,
@@ -867,7 +867,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
           const timestamp = new Date().toISOString();
 
           await db.transact([
-            db.tx.itemLocations[itemLocationId].update({
+            db.tx.ilocations[itemLocationId].update({
               itemId: itemId,
               locationId: defaultLocationId,
               storeId: currentStore.id,
@@ -1019,7 +1019,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
         const timestamp = new Date().toISOString();
 
         await db.transact([
-          db.tx.itemLocations[itemLocationId].update({
+          db.tx.ilocations[itemLocationId].update({
             itemId: itemId,
             locationId: defaultLocationId,
             storeId: currentStore.id,

@@ -61,7 +61,7 @@ export default function ProductSelect({ collectionId, onClose }: ProductSelectPr
   }, [onClose]);
 
   const filteredProducts = products.filter(product =>
-    product.title?.toLowerCase().includes(searchQuery.toLowerCase())
+    (product.title || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleProductToggle = (productId: string) => {
