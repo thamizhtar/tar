@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Modal, Animated, BackHandler } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Alert, Modal, Animated, BackHandler, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { db, formatCurrency } from '../lib/instant';
@@ -125,6 +125,11 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [showBottomDrawer, setShowBottomDrawer] = useState(false);
 
+  // New state for enhanced search, filter, and view functionality
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedView, setSelectedView] = useState<'stock' | 'pricing' | 'image'>('stock');
+
 
   // Query items from database - filter by productId if provided
   const { data, isLoading, error } = db.useQuery({
@@ -166,8 +171,19 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
       });
     }
 
+    // Apply option value filter
+    if (selectedFilters.length > 0) {
+      filtered = filtered.filter(item =>
+        selectedFilters.some(filter =>
+          item.option1 === filter ||
+          item.option2 === filter ||
+          item.option3 === filter
+        )
+      );
+    }
+
     return filtered;
-  }, [items, searchQuery, activeFilter]);
+  }, [items, searchQuery, activeFilter, selectedFilters]);
 
   const handleItemSelect = useCallback((item: any) => {
     if (isMultiSelectMode) {
@@ -223,128 +239,376 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
   }
 
   return (
-    <View className="flex-1 bg-white">
+    <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
       {/* Header */}
-      <View style={{ paddingTop: insets.top }} className="bg-white border-b border-gray-200">
-        <View className="px-4 py-4">
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity onPress={onClose}>
-              <MaterialIcons name="arrow-back" size={24} color="#374151" />
-            </TouchableOpacity>
-            <View className="items-center">
-              <Text className="text-xl font-semibold text-gray-900">
-                {productId ? 'Product Items' : 'Items'}
-              </Text>
-              {productId && (
-                <Text className="text-sm text-gray-500 mt-1">
-                  {(() => {
-                    const product = items.find(item => item.productId === productId)?.product;
-                    return product ? `${product.title}` : 'Product Items';
-                  })()}
-                </Text>
-              )}
-            </View>
-            <View style={{ width: 24 }} />
+      <View style={{ backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 16 }}>
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 20, fontWeight: '600', color: '#111827' }}>
+              {productId ? (() => {
+                const product = items.find(item => item.productId === productId)?.product?.[0];
+                return product ? product.title : 'Items';
+              })() : 'Items'}
+            </Text>
           </View>
         </View>
       </View>
 
-      {/* Top Bar like products */}
-      <View className="bg-white px-4 py-3">
-        <View className="flex-row items-center">
-          {/* Add Icon */}
-          <TouchableOpacity onPress={handleAddNew}>
-            <Feather name="plus" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          {/* Search Input */}
-          <TextInput
-            placeholder="Search"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            className="flex-1 text-base text-gray-900 ml-3 mr-3"
-            placeholderTextColor="#9CA3AF"
-          />
-
-          {/* Filter Icon */}
-          <TouchableOpacity>
-            <MaterialCommunityIcons name="sort-ascending" size={20} color="#9CA3AF" />
+      {items.length === 0 ? (
+        <View style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: 60,
+          paddingHorizontal: 20
+        }}>
+          <MaterialIcons name="inventory-2" size={48} color="#9CA3AF" />
+          <Text style={{
+            fontSize: 18,
+            fontWeight: '600',
+            color: '#6B7280',
+            marginTop: 16,
+            textAlign: 'center'
+          }}>
+            No Items Yet
+          </Text>
+          <Text style={{
+            fontSize: 14,
+            color: '#9CA3AF',
+            marginTop: 8,
+            textAlign: 'center',
+            lineHeight: 20
+          }}>
+            {productId
+              ? 'This product has no items yet.\nAdd option sets to generate variants.'
+              : 'Start by adding your first item to the inventory'
+            }
+          </Text>
+          <TouchableOpacity
+            onPress={handleAddNew}
+            style={{
+              backgroundColor: '#3B82F6',
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 6,
+              marginTop: 16,
+            }}
+          >
+            <Text style={{
+              color: '#fff',
+              fontSize: 14,
+              fontWeight: '500',
+            }}>
+              Add Item
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* Filter Tabs - Always visible */}
-      <View className="px-4 py-3 bg-white border-b border-gray-100">
-        <View className="flex-row">
-          {(['All', 'Active', 'Draft'] as FilterStatus[]).map((filter) => (
+      ) : (
+        <View style={{ flex: 1 }}>
+          {/* Fixed Search Bar */}
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            backgroundColor: '#fff',
+            borderBottomWidth: 1,
+            borderBottomColor: '#E5E7EB',
+          }}>
+            <TouchableOpacity onPress={handleAddNew} style={{ marginRight: 12 }}>
+              <Feather name="plus" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TextInput
+              style={{
+                flex: 1,
+                fontSize: 16,
+                color: '#111827',
+                paddingVertical: 8,
+                paddingHorizontal: 0,
+                borderWidth: 0,
+                backgroundColor: 'transparent',
+              }}
+              placeholder="Search items..."
+              placeholderTextColor="#9CA3AF"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
             <TouchableOpacity
-              key={filter}
-              onPress={() => setActiveFilter(filter)}
-              className={`mr-6 pb-2 ${
-                activeFilter === filter ? 'border-b-2 border-blue-600' : ''
-              }`}
+              onPress={() => setShowFilters(!showFilters)}
+              style={{
+                padding: 8,
+                marginLeft: 8,
+              }}
             >
-              <Text className={`text-base font-medium ${
-                activeFilter === filter ? 'text-blue-600' : 'text-gray-500'
-              }`}>
-                {filter}
-              </Text>
+              <MaterialIcons
+                name="tune"
+                size={20}
+                color={showFilters || selectedFilters.length > 0 ? '#3B82F6' : '#9CA3AF'}
+              />
             </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+          </View>
 
-      {/* Items List */}
-      <View className="flex-1">
-        {filteredItems.length === 0 ? (
-          <View className="flex-1 items-center justify-center px-6">
-            <View className="items-center">
-              <Text className="text-6xl mb-4">📦</Text>
-              <Text className="text-xl font-medium text-gray-900 mb-2 text-center">
-                {searchQuery ? 'No items found' : 'No items yet'}
-              </Text>
-              <Text className="text-gray-500 text-center mb-6">
-                {searchQuery ? 'Try adjusting your search or filters' :
-                 activeFilter === 'Active' ? 'Items will appear here when they are active' :
-                 activeFilter === 'Draft' ? 'Items will appear here when they are saved as drafts' :
-                 'Start by adding your first item to the inventory'}
-              </Text>
-              {(items.length === 0 || activeFilter === 'All') && (
-                <TouchableOpacity
-                  onPress={handleAddNew}
-                  className="bg-blue-600 px-6 py-3 rounded-lg"
-                >
-                  <Text className="text-white font-medium">Add Item</Text>
-                </TouchableOpacity>
-              )}
+          {/* Fixed View Selection Bar */}
+          <View style={{
+            backgroundColor: '#fff',
+            borderBottomWidth: 1,
+            borderBottomColor: '#E5E7EB',
+          }}>
+            <View style={{
+              flexDirection: 'row',
+              backgroundColor: '#fff',
+            }}>
+              {[
+                { id: 'stock', label: 'Stock' },
+                { id: 'pricing', label: 'Pricing' },
+                { id: 'image', label: 'Image' }
+              ].map((view, index) => {
+                const isSelected = selectedView === view.id;
+                return (
+                  <TouchableOpacity
+                    key={view.id}
+                    onPress={() => setSelectedView(view.id as 'stock' | 'pricing' | 'image')}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 16,
+                      backgroundColor: '#fff',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRightWidth: index < 2 ? 1 : 0,
+                      borderRightColor: '#E5E7EB',
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 14,
+                      color: isSelected ? '#3B82F6' : '#6B7280',
+                      fontWeight: isSelected ? '600' : '500',
+                    }}>
+                      {view.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
-        ) : (
-          <FlatList
-            data={filteredItems}
+
+          {/* Fixed Filter Options */}
+          {showFilters && (() => {
+            const allOptionValues = new Set<string>();
+            items.forEach((item: any) => {
+              if (item.option1) allOptionValues.add(item.option1);
+              if (item.option2) allOptionValues.add(item.option2);
+              if (item.option3) allOptionValues.add(item.option3);
+            });
+            const optionValuesList = Array.from(allOptionValues).sort();
+
+            if (optionValuesList.length > 0) {
+              return (
+                <View style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  backgroundColor: '#F3F4F6',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#E5E7EB',
+                }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8 }}
+                  >
+                    {optionValuesList.map((optionValue) => {
+                      const isSelected = selectedFilters.includes(optionValue);
+                      return (
+                        <TouchableOpacity
+                          key={optionValue}
+                          onPress={() => {
+                            if (isSelected) {
+                              setSelectedFilters(prev => prev.filter(f => f !== optionValue));
+                            } else {
+                              setSelectedFilters(prev => [...prev, optionValue]);
+                            }
+                          }}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            backgroundColor: isSelected ? '#3B82F6' : '#fff',
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
+                          }}
+                        >
+                          <Text style={{
+                            fontSize: 14,
+                            color: isSelected ? '#fff' : '#6B7280',
+                            fontWeight: '500',
+                          }}>
+                            {optionValue}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              );
+            }
+            return null;
+          })()}
+
+          {/* Scrollable Items List */}
+          <ScrollView
+            style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            windowSize={10}
-            initialNumToRender={15}
-            getItemLayout={(data, index) => ({
-              length: 80, // Approximate height of each item
-              offset: 80 * index,
-              index,
-            })}
-            renderItem={({ item }) => (
-              <ItemComponent
-                item={item}
-                isSelected={selectedItems.has(item.id)}
-                isMultiSelectMode={isMultiSelectMode}
-                onPress={() => handleItemSelect(item)}
-                onLongPress={() => handleLongPress(item)}
-              />
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            {filteredItems.map((item: any) => (
+              <View
+                key={item.id}
+                style={{
+                  backgroundColor: '#fff',
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#F3F4F6',
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827' }}>
+                      {item.sku || 'No SKU'}
+                    </Text>
+                    {item.option1 && (
+                      <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
+                        {item.option1}
+                        {item.option2 && ` • ${item.option2}`}
+                        {item.option3 && ` • ${item.option3}`}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    {selectedView === 'stock' && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          Alert.prompt(
+                            'Update Stock',
+                            'Enter stock quantity:',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Update',
+                                onPress: (newStock) => {
+                                  if (newStock && !isNaN(Number(newStock))) {
+                                    db.transact(db.tx.items[item.id].update({ onhand: Number(newStock) }));
+                                  }
+                                }
+                              }
+                            ],
+                            'plain-text',
+                            String(item.onhand || 0)
+                          );
+                        }}
+                        style={{
+                          backgroundColor: '#F9FAFB',
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                          minWidth: 50,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                          {item.onhand || 0}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedView === 'pricing' && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          Alert.prompt(
+                            'Update Sale Price',
+                            'Enter sale price:',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Update',
+                                onPress: (newPrice) => {
+                                  if (newPrice && !isNaN(Number(newPrice))) {
+                                    db.transact(db.tx.items[item.id].update({ saleprice: Number(newPrice) }));
+                                  }
+                                }
+                              }
+                            ],
+                            'plain-text',
+                            String(item.saleprice || item.price || 0)
+                          );
+                        }}
+                        style={{
+                          backgroundColor: '#F9FAFB',
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                          minWidth: 60,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+                          ${(item.saleprice || item.price || 0).toFixed(2)}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {selectedView === 'image' && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          Alert.alert('Image', 'Item image functionality coming soon');
+                        }}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          backgroundColor: '#F9FAFB',
+                          borderRadius: 6,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {item.image ? (
+                          <R2Image
+                            url={item.image}
+                            style={{ width: '100%', height: '100%', borderRadius: 6 }}
+                            fallback={
+                              <MaterialIcons name="image" size={20} color="#9CA3AF" />
+                            }
+                          />
+                        ) : (
+                          <MaterialIcons name="image" size={20} color="#9CA3AF" />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              </View>
+            ))}
+
+            {filteredItems.length === 0 && items.length > 0 && (
+              <View style={{
+                flex: 1,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: 40,
+                paddingHorizontal: 20
+              }}>
+                <MaterialIcons name="search-off" size={48} color="#9CA3AF" />
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '500',
+                  color: '#6B7280',
+                  marginTop: 16,
+                  textAlign: 'center'
+                }}>
+                  No items match your search
+                </Text>
+              </View>
             )}
-          />
-        )}
-      </View>
+          </ScrollView>
+        </View>
+      )}
 
       {/* Bottom Drawer for Multi-select Actions */}
       {showBottomDrawer && (

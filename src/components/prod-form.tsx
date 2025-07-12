@@ -261,12 +261,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
     return type ? type.replace(/_/g, ' ') : 'Value';
   }, []);
 
-  // Items search and filter states
-  const [itemsSearchQuery, setItemsSearchQuery] = useState('');
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedView, setSelectedView] = useState<'stock' | 'pricing' | 'image'>('stock');
-  const [editingItem, setEditingItem] = useState<{id: string, field: string, value: string} | null>(null);
+
 
 
 
@@ -1563,7 +1558,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
                 paddingHorizontal: 16,
                 paddingVertical: 12,
               }}
-              onPress={() => onNavigate?.('items', { productId: product?.id })}
+              onPress={() => onNavigate?.('items', { productId: product?.id, product: product })}
             >
               <View style={{
                 width: 32,
@@ -1589,6 +1584,8 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
               </View>
               <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
             </TouchableOpacity>
+
+
           </View>
         </TabContent>
       ),
@@ -1799,411 +1796,6 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
         </TabContent>
       ),
     },
-    {
-      id: 'items',
-      label: 'Items',
-      icon: <Text style={{ fontSize: 16, fontWeight: '600', color: '#6B7280' }}>I</Text>,
-      content: (
-        <View style={{ flex: 1 }}>
-          {(() => {
-            const items = productItemsData?.items || [];
-
-            // Filter items based on search query and selected filters
-            const filteredItems = items.filter((item: any) => {
-              // Search filter
-              const searchMatch = !itemsSearchQuery ||
-                (item.sku && item.sku.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
-                (item.option1 && item.option1.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
-                (item.option2 && item.option2.toLowerCase().includes(itemsSearchQuery.toLowerCase())) ||
-                (item.option3 && item.option3.toLowerCase().includes(itemsSearchQuery.toLowerCase()));
-
-              // Option value filter
-              const filterMatch = selectedFilters.length === 0 ||
-                selectedFilters.some(filter =>
-                  item.option1 === filter ||
-                  item.option2 === filter ||
-                  item.option3 === filter
-                );
-
-              return searchMatch && filterMatch;
-            });
-
-            if (items.length === 0) {
-              return (
-                <View style={{
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingVertical: 60,
-                  paddingHorizontal: 20
-                }}>
-                  <MaterialIcons name="inventory-2" size={48} color="#9CA3AF" />
-                  <Text style={{
-                    fontSize: 18,
-                    fontWeight: '600',
-                    color: '#6B7280',
-                    marginTop: 16,
-                    textAlign: 'center'
-                  }}>
-                    No Items Yet
-                  </Text>
-                  <Text style={{
-                    fontSize: 14,
-                    color: '#9CA3AF',
-                    marginTop: 8,
-                    textAlign: 'center',
-                    lineHeight: 20
-                  }}>
-                    Tap the "O" button to select an option set{'\n'}and generate product variants
-                  </Text>
-
-                  {/* Fix Unlinked Items Button */}
-                  <TouchableOpacity
-                    onPress={fixUnlinkedItems}
-                    style={{
-                      backgroundColor: '#F59E0B',
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 6,
-                      marginTop: 16,
-                    }}
-                  >
-                    <Text style={{
-                      color: '#fff',
-                      fontSize: 14,
-                      fontWeight: '500',
-                    }}>
-                      Fix Unlinked Items
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            }
-
-            return (
-              <View style={{ flex: 1 }}>
-                {/* Fixed Search Bar */}
-                <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingHorizontal: 16,
-                  paddingVertical: 12,
-                  backgroundColor: '#fff',
-                  borderBottomWidth: 1,
-                  borderBottomColor: '#E5E7EB',
-                }}>
-                  <TextInput
-                    style={{
-                      flex: 1,
-                      fontSize: 16,
-                      color: '#111827',
-                      paddingVertical: 8,
-                      paddingHorizontal: 0,
-                      borderWidth: 0,
-                      backgroundColor: 'transparent',
-                    }}
-                    placeholder="Search items..."
-                    placeholderTextColor="#9CA3AF"
-                    value={itemsSearchQuery}
-                    onChangeText={setItemsSearchQuery}
-                  />
-                  <TouchableOpacity
-                    onPress={() => {
-                      // Navigate to inventory dashboard
-                      if (onNavigate) {
-                        onNavigate('inventory');
-                      }
-                    }}
-                    style={{
-                      padding: 8,
-                      marginLeft: 8,
-                    }}
-                  >
-                    <MaterialIcons
-                      name="inventory"
-                      size={20}
-                      color="#3B82F6"
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setShowFilters(!showFilters)}
-                    style={{
-                      padding: 8,
-                      marginLeft: 8,
-                    }}
-                  >
-                    <MaterialIcons
-                      name="tune"
-                      size={20}
-                      color={showFilters || selectedFilters.length > 0 ? '#3B82F6' : '#9CA3AF'}
-                    />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Fixed View Selection Bar */}
-                <View style={{
-                  backgroundColor: '#fff',
-                  borderBottomWidth: 1,
-                  borderBottomColor: '#E5E7EB',
-                }}>
-                  <View style={{
-                    flexDirection: 'row',
-                    backgroundColor: '#fff', // White background
-                  }}>
-                    {[
-                      { id: 'stock', label: 'Stock' },
-                      { id: 'pricing', label: 'Pricing' },
-                      { id: 'image', label: 'Image' }
-                    ].map((view, index) => {
-                      const isSelected = selectedView === view.id;
-                      return (
-                        <TouchableOpacity
-                          key={view.id}
-                          onPress={() => setSelectedView(view.id as 'stock' | 'pricing' | 'image')}
-                          style={{
-                            flex: 1,
-                            paddingVertical: 16,
-                            backgroundColor: '#fff', // White background
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRightWidth: index < 2 ? 1 : 0, // Divider between tiles
-                            borderRightColor: '#E5E7EB', // Light gray divider
-                          }}
-                        >
-                          <Text style={{
-                            fontSize: 14,
-                            color: isSelected ? '#3B82F6' : '#6B7280', // Blue when selected, gray when not
-                            fontWeight: isSelected ? '600' : '500',
-                          }}>
-                            {view.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                {/* Fixed Filter Options */}
-                {showFilters && (() => {
-                  const allOptionValues = new Set<string>();
-                  items.forEach((item: any) => {
-                    if (item.option1) allOptionValues.add(item.option1);
-                    if (item.option2) allOptionValues.add(item.option2);
-                    if (item.option3) allOptionValues.add(item.option3);
-                  });
-                  const optionValuesList = Array.from(allOptionValues).sort();
-
-                  if (optionValuesList.length > 0) {
-                    return (
-                      <View style={{
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        backgroundColor: '#F3F4F6',
-                        borderBottomWidth: 1,
-                        borderBottomColor: '#E5E7EB',
-                      }}>
-                        <ScrollView
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={{ gap: 8 }}
-                        >
-                          {optionValuesList.map((optionValue) => {
-                            const isSelected = selectedFilters.includes(optionValue);
-                            return (
-                              <TouchableOpacity
-                                key={optionValue}
-                                onPress={() => {
-                                  if (isSelected) {
-                                    setSelectedFilters(prev => prev.filter(f => f !== optionValue));
-                                  } else {
-                                    setSelectedFilters(prev => [...prev, optionValue]);
-                                  }
-                                }}
-                                style={{
-                                  paddingHorizontal: 12,
-                                  paddingVertical: 6,
-                                  backgroundColor: isSelected ? '#3B82F6' : '#fff',
-                                  borderRadius: 16,
-                                  borderWidth: 1,
-                                  borderColor: isSelected ? '#3B82F6' : '#E5E7EB',
-                                }}
-                              >
-                                <Text style={{
-                                  fontSize: 14,
-                                  color: isSelected ? '#fff' : '#6B7280',
-                                  fontWeight: '500',
-                                }}>
-                                  {optionValue}
-                                </Text>
-                              </TouchableOpacity>
-                            );
-                          })}
-                        </ScrollView>
-                      </View>
-                    );
-                  }
-                  return null;
-                })()}
-
-                {/* Scrollable Items List */}
-                <ScrollView
-                  style={{ flex: 1 }}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={{ paddingBottom: 20 }}
-                >
-                  {filteredItems.map((item: any) => (
-                    <View
-                      key={item.id}
-                      style={{
-                        backgroundColor: '#fff',
-                        borderBottomWidth: 1,
-                        borderBottomColor: '#F3F4F6',
-                        paddingVertical: 14,
-                        paddingHorizontal: 16,
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827' }}>
-                            {item.sku || 'No SKU'}
-                          </Text>
-                          {item.option1 && (
-                            <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
-                              {item.option1}
-                              {item.option2 && ` • ${item.option2}`}
-                              {item.option3 && ` • ${item.option3}`}
-                            </Text>
-                          )}
-                        </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          {selectedView === 'stock' && (
-                            <TouchableOpacity
-                              onPress={() => {
-                                Alert.prompt(
-                                  'Update Stock',
-                                  'Enter stock quantity:',
-                                  [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    {
-                                      text: 'Update',
-                                      onPress: (newStock) => {
-                                        if (newStock && !isNaN(Number(newStock))) {
-                                          db.transact(db.tx.items[item.id].update({ onhand: Number(newStock) }));
-                                        }
-                                      }
-                                    }
-                                  ],
-                                  'plain-text',
-                                  String(item.onhand || 0)
-                                );
-                              }}
-                              style={{
-                                backgroundColor: '#F9FAFB',
-                                paddingHorizontal: 10,
-                                paddingVertical: 6,
-                                borderRadius: 6,
-                                minWidth: 50,
-                                alignItems: 'center',
-                              }}
-                            >
-                              <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
-                                {item.onhand || 0}
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                          {selectedView === 'pricing' && (
-                            <TouchableOpacity
-                              onPress={() => {
-                                Alert.prompt(
-                                  'Update Sale Price',
-                                  'Enter sale price:',
-                                  [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    {
-                                      text: 'Update',
-                                      onPress: (newPrice) => {
-                                        if (newPrice && !isNaN(Number(newPrice))) {
-                                          db.transact(db.tx.items[item.id].update({ saleprice: Number(newPrice) }));
-                                        }
-                                      }
-                                    }
-                                  ],
-                                  'plain-text',
-                                  String(item.saleprice || item.price || 0)
-                                );
-                              }}
-                              style={{
-                                backgroundColor: '#F9FAFB',
-                                paddingHorizontal: 10,
-                                paddingVertical: 6,
-                                borderRadius: 6,
-                                minWidth: 60,
-                                alignItems: 'center',
-                              }}
-                            >
-                              <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
-                                ${(item.saleprice || item.price || 0).toFixed(2)}
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                          {selectedView === 'image' && (
-                            <TouchableOpacity
-                              onPress={() => {
-                                // Handle image selection for item
-                                Alert.alert('Image', 'Item image functionality coming soon');
-                              }}
-                              style={{
-                                width: 40,
-                                height: 40,
-                                backgroundColor: '#F9FAFB',
-                                borderRadius: 6,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              {formData.image ? (
-                                <R2Image
-                                  url={formData.image}
-                                  style={{ width: '100%', height: '100%', borderRadius: 6 }}
-                                  resizeMode="cover"
-                                />
-                              ) : (
-                                <MaterialIcons name="image" size={20} color="#9CA3AF" />
-                              )}
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-
-                  {filteredItems.length === 0 && items.length > 0 && (
-                    <View style={{
-                      flex: 1,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      paddingVertical: 40,
-                      paddingHorizontal: 20
-                    }}>
-                      <MaterialIcons name="search-off" size={48} color="#9CA3AF" />
-                      <Text style={{
-                        fontSize: 16,
-                        fontWeight: '500',
-                        color: '#6B7280',
-                        marginTop: 16,
-                        textAlign: 'center'
-                      }}>
-                        No items match your search
-                      </Text>
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
-            );
-            })()}
-        </View>
-      ),
-    },
   ];
 
   const activeTabData = tabs.find(tab => tab.id === activeTab);
@@ -2242,21 +1834,13 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
       {/* Content Area */}
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
         {activeTabData && (
-          activeTab === 'items' ? (
-            // Items tab - no outer ScrollView, fixed bars with scrollable content
-            <View style={{ flex: 1 }}>
-              {activeTabData.content}
-            </View>
-          ) : (
-            // Other tabs - use ScrollView as before
-            <ScrollView
-              style={{ flex: 1 }}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 100 }}
-            >
-              {activeTabData.content}
-            </ScrollView>
-          )
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 100 }}
+          >
+            {activeTabData.content}
+          </ScrollView>
         )}
       </View>
 
@@ -2288,8 +1872,6 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
             tabIcon = <MaterialIcons name="numbers" size={20} color={iconColor} />;
           } else if (tab.id === 'categorization') {
             tabIcon = <Ionicons name="folder-outline" size={20} color={iconColor} />;
-          } else if (tab.id === 'items') {
-            tabIcon = <Text style={{ fontSize: 16, fontWeight: '600', color: iconColor }}>I</Text>;
           }
 
           return (

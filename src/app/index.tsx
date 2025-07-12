@@ -116,8 +116,19 @@ export default function Page() {
         return true;
       }
 
-      // For full-screen screens (options, metafields, items, locations), go back to menu
+      // For full-screen screens, handle back navigation based on context
       if (currentScreen === 'options' || currentScreen === 'metafields' || currentScreen === 'items' || currentScreen === 'locations') {
+        // If items screen was opened from product form, go back to product form
+        if (currentScreen === 'items' && navigationData?.productId) {
+          // Use the full product object if available, otherwise find by ID
+          const productToOpen = navigationData.product || { id: navigationData.productId };
+          setCurrentScreen('products'); // This will be handled by opening the product form
+          setIsProductFormOpen(true);
+          setProductFormProduct(productToOpen);
+          setNavigationData(null);
+          return true;
+        }
+        // For other screens or items without product context, go to menu
         setCurrentScreen('menu');
         setNavigationData(null);
         return true;
@@ -341,7 +352,17 @@ export default function Page() {
       case 'items':
         return <ItemsScreen
           isGridView={isGridView}
-          onClose={() => handleNavigate('menu')}
+          onClose={() => {
+            // If items screen was opened from product form, go back to product form
+            if (navigationData?.productId) {
+              setIsProductFormOpen(true);
+              setProductFormProduct({ id: navigationData.productId });
+              setCurrentScreen('products');
+              setNavigationData(null);
+            } else {
+              handleNavigate('menu');
+            }
+          }}
           productId={navigationData?.productId} // Pass productId if provided in navigation data
         />;
       case 'locations':
