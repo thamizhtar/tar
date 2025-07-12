@@ -143,11 +143,11 @@ export default function FullScreenMenu({ onNavigate, onClose }: FullScreenMenuPr
             </View>
           </TouchableOpacity>
 
-          {/* Commerce Card - Green */}
+          {/* Commerce Card - Light White */}
           <TouchableOpacity
             onPress={() => handleItemPress('commerce')}
-            className="bg-green-500 p-6"
-            style={{ minHeight: 200, borderRadius: 10 }}
+            className="p-6"
+            style={{ minHeight: 200, borderRadius: 10, backgroundColor: '#F5F5F5' }}
           >
             <View className="flex-1">
               {/* Header */}
