@@ -50,9 +50,10 @@ interface ProductFormScreenProps {
   onClose: () => void;
   onSave?: () => void;
   onNavigate?: (screen: string, data?: any) => void;
+  onHasChangesChange?: (hasChanges: boolean) => void;
 }
 
-export default function ProductFormScreen({ product, onClose, onSave, onNavigate }: ProductFormScreenProps) {
+export default function ProductFormScreen({ product, onClose, onSave, onNavigate, onHasChangesChange }: ProductFormScreenProps) {
   const { currentStore } = useStore();
   const insets = useSafeAreaInsets();
   const isEditing = !!product;
@@ -297,11 +298,43 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
   // Initialize selected options from product data
   useEffect(() => {
     if (product?.options) {
-      // Assuming options is stored as { optionSet: string, selectedValues: string[] }
-      setSelectedOptionSet(product.options.optionSet || null);
-      setSelectedOptionValues(product.options.selectedValues || []);
+      try {
+        // Parse the options JSON string to get the option sets data
+        const optionsData = typeof product.options === 'string'
+          ? JSON.parse(product.options)
+          : product.options;
+
+        if (Array.isArray(optionsData)) {
+          // Extract unique option set IDs from the stored options data
+          const setIds = new Set<string>();
+
+          // Get all option values to find which sets they belong to
+          const allOptionValues = optionSetsData?.optionValues || [];
+
+          optionsData.forEach((groupData: any) => {
+            if (groupData.values && Array.isArray(groupData.values)) {
+              groupData.values.forEach((value: any) => {
+                // Find the option value in the database to get its setId
+                const optionValue = allOptionValues.find((ov: any) =>
+                  ov.name === value.name && ov.identifierValue === value.identifier
+                );
+                if (optionValue) {
+                  setIds.add(optionValue.setId);
+                }
+              });
+            }
+          });
+
+          setSelectedOptionSets(Array.from(setIds));
+        }
+      } catch (error) {
+        console.error('Error parsing product options:', error);
+        setSelectedOptionSets([]);
+      }
+    } else {
+      setSelectedOptionSets([]);
     }
-  }, [product?.options]);
+  }, [product?.options, optionSetsData?.optionValues]);
 
   // Update options in form data when selection changes
   useEffect(() => {
@@ -325,6 +358,7 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
 
 
   // Handle Android back button
+  // Handle back button - show unsaved changes modal if needed
   useEffect(() => {
     const backAction = () => {
       if (hasChanges) {
@@ -338,6 +372,20 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
     const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
   }, [hasChanges, onClose]);
+
+  // Show unsaved changes modal when trying to close with changes
+  const handleClose = useCallback(() => {
+    if (hasChanges) {
+      setShowUnsavedChangesModal(true);
+    } else {
+      onClose();
+    }
+  }, [hasChanges, onClose]);
+
+  // Notify main app when hasChanges state changes
+  useEffect(() => {
+    onHasChangesChange?.(hasChanges);
+  }, [hasChanges, onHasChangesChange]);
 
   // Initialize metafield values and selected fields from product data
   useEffect(() => {
@@ -1449,6 +1497,98 @@ export default function ProductFormScreen({ product, onClose, onSave, onNavigate
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+
+          {/* Second Container - Options and Items */}
+          <View style={{
+            borderWidth: 1,
+            borderColor: '#E5E7EB',
+            backgroundColor: '#fff',
+            borderRadius: 8,
+            marginHorizontal: 0,
+            marginTop: 16,
+            overflow: 'hidden',
+          }}>
+            {/* Options Row */}
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: '#E5E7EB',
+              }}
+              onPress={() => onNavigate?.('options', { productId: product?.id })}
+            >
+              <View style={{
+                width: 32,
+                height: 32,
+                backgroundColor: '#F3F4F6',
+                borderRadius: 6,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+              }}>
+                <Text style={{ fontSize: 16 }}>o</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>
+                  Options
+                </Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
+                  {(() => {
+                    const optionSets = optionSetsData?.optionSets || [];
+                    const productOptionSets = optionSets.filter(set =>
+                      selectedOptionSets.includes(set.id)
+                    );
+
+                    if (productOptionSets.length === 0) {
+                      return 'No options selected';
+                    }
+
+                    const optionNames = productOptionSets.map(set => set.name).join(', ');
+                    return `${productOptionSets.length} option set${productOptionSets.length !== 1 ? 's' : ''}: ${optionNames}`;
+                  })()}
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Items Row */}
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+              }}
+              onPress={() => onNavigate?.('items', { productId: product?.id })}
+            >
+              <View style={{
+                width: 32,
+                height: 32,
+                backgroundColor: '#F3F4F6',
+                borderRadius: 6,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+              }}>
+                <Text style={{ fontSize: 16, fontWeight: '600' }}>I</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '500', color: '#111827' }}>
+                  Items
+                </Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 2 }}>
+                  {(() => {
+                    const items = productItemsData?.items || [];
+                    return `${items.length} item${items.length !== 1 ? 's' : ''}`;
+                  })()}
+                </Text>
+              </View>
+              <MaterialIcons name="chevron-right" size={20} color="#9CA3AF" />
+            </TouchableOpacity>
           </View>
         </TabContent>
       ),

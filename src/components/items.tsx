@@ -14,6 +14,7 @@ interface ItemsScreenProps {
   onItemFormOpen?: (item?: any) => void;
   onItemFormClose?: () => void;
   onClose?: () => void;
+  productId?: string; // Add productId prop to filter items by product
 }
 
 type FilterStatus = 'All' | 'Active' | 'Draft';
@@ -115,7 +116,7 @@ const ItemComponent = React.memo(({
   );
 });
 
-export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItemFormClose, onClose }: ItemsScreenProps) {
+export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItemFormClose, onClose, productId }: ItemsScreenProps) {
   const insets = useSafeAreaInsets();
   const { currentStore } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -125,28 +126,21 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
   const [showBottomDrawer, setShowBottomDrawer] = useState(false);
 
 
-  // Query items from database
+  // Query items from database - filter by productId if provided
   const { data, isLoading, error } = db.useQuery({
     items: {
-      $: { where: { storeId: currentStore?.id || '' } },
+      $: {
+        where: productId
+          ? { storeId: currentStore?.id || '', productId: productId }
+          : { storeId: currentStore?.id || '' }
+      },
       product: {}
     }
   });
 
   const items = data?.items || [];
 
-  useEffect(() => {
-    const backAction = () => {
-      if (onClose) {
-        onClose();
-        return true;
-      }
-      return false;
-    };
-
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
-    return () => backHandler.remove();
-  }, [onClose]);
+  // Back button handling is now managed by the main app
 
   // Filter and search logic
   const filteredItems = useMemo(() => {
@@ -237,7 +231,19 @@ export default function ItemsScreen({ isGridView = false, onItemFormOpen, onItem
             <TouchableOpacity onPress={onClose}>
               <MaterialIcons name="arrow-back" size={24} color="#374151" />
             </TouchableOpacity>
-            <Text className="text-xl font-semibold text-gray-900">Items</Text>
+            <View className="items-center">
+              <Text className="text-xl font-semibold text-gray-900">
+                {productId ? 'Product Items' : 'Items'}
+              </Text>
+              {productId && (
+                <Text className="text-sm text-gray-500 mt-1">
+                  {(() => {
+                    const product = items.find(item => item.productId === productId)?.product;
+                    return product ? `${product.title}` : 'Product Items';
+                  })()}
+                </Text>
+              )}
+            </View>
             <View style={{ width: 24 }} />
           </View>
         </View>

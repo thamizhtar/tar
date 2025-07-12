@@ -171,7 +171,7 @@ eas build --platform android --profile production
 - [ ] No ESLint errors
 - [ ] TypeScript compilation successful
 - [ ] Environment variables configured
-- [ ] Database migrations completed
+- [ ] Database schema configured
 - [ ] R2 bucket configured and accessible
 - [ ] App version incremented
 

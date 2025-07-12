@@ -20,7 +20,7 @@ import ItemsScreen from "../components/items";
 import BottomNavigation, { BottomTab, MainScreen } from "../components/nav";
 import BottomTabContent from "../components/tabs";
 
-import { completeMigrationProcess } from "../lib/cleanup-legacy";
+
 import { StoreProvider } from "../lib/store-context";
 import { log, trackError } from "../lib/logger";
 import ErrorBoundary from "../components/ui/error-boundary";
@@ -44,6 +44,7 @@ export default function Page() {
   const [showManagement, setShowManagement] = useState(false); // false = product/collection list (default), true = management screen
   const [productFormProduct, setProductFormProduct] = useState<any>(null); // Track product being edited in form
   const [isProductFormOpen, setIsProductFormOpen] = useState(false); // Track if product form is open
+  const [productFormHasChanges, setProductFormHasChanges] = useState(false); // Track if product form has unsaved changes
   const [collectionFormCollection, setCollectionFormCollection] = useState<any>(null); // Track collection being edited in form
   const [isCollectionFormOpen, setIsCollectionFormOpen] = useState(false); // Track if collection form is open
   const [optionSetData, setOptionSetData] = useState<{id?: string, name?: string}>({});
@@ -57,31 +58,7 @@ export default function Page() {
     showManagement: false
   }]);
 
-  // Run complete migration process on app startup
-  useEffect(() => {
-    const runCompleteMigration = async () => {
-      try {
-        console.log('🚀 Starting complete migration process...');
-        const result = await completeMigrationProcess();
 
-        if (result.success) {
-          console.log('✅ Complete migration process finished successfully');
-
-
-        } else {
-          console.error('❌ Complete migration process failed:', result.error);
-          // Fallback to old migration if complete process fails
-          // Migration removed
-        }
-      } catch (error) {
-        console.error('❌ Migration error:', error);
-        // Fallback to old migration if complete process fails
-        // Migration removed
-      }
-    };
-
-    runCompleteMigration();
-  }, []);
 
   // Function to go back using navigation stack
   const handleGoBack = useCallback(() => {
@@ -100,6 +77,8 @@ export default function Page() {
         if (previousState.data) {
           setOptionSetData(previousState.data);
         }
+        // Clear navigation data when going back
+        setNavigationData(null);
 
         // Update navigation stack
         setNavigationStack(newStack);
@@ -112,14 +91,16 @@ export default function Page() {
   // Handle Android back button
   useEffect(() => {
     const backAction = () => {
-      // If product form is open, let the product form handle the back button
+      // If product form is open, let it handle the back button
       if (isProductFormOpen) {
         return false; // Let the product form's back handler take over
       }
 
-      // If collection form is open, let the collection form handle the back button
+      // If collection form is open, close it and go back to previous screen
       if (isCollectionFormOpen) {
-        return false; // Let the collection form's back handler take over
+        setCollectionFormCollection(null);
+        setIsCollectionFormOpen(false);
+        return true;
       }
 
       // If in management view, go back to list view
@@ -131,10 +112,32 @@ export default function Page() {
       // If bottom tabs are toggled (hidden), show them
       if (!showBottomTabs && currentScreen !== 'menu') {
         setShowBottomTabs(true);
+        setActiveBottomTab('workspace');
         return true;
       }
 
-      // Try to go back using navigation stack
+      // For full-screen screens (options, metafields, items, locations), go back to menu
+      if (currentScreen === 'options' || currentScreen === 'metafields' || currentScreen === 'items' || currentScreen === 'locations') {
+        setCurrentScreen('menu');
+        setNavigationData(null);
+        return true;
+      }
+
+      // For menu screen, try to go back using navigation stack
+      if (currentScreen === 'menu') {
+        const didGoBack = handleGoBack();
+        if (didGoBack) {
+          return true;
+        }
+        // If no navigation history, go to space
+        setCurrentScreen('space');
+        setShowBottomTabs(true);
+        setActiveBottomTab('workspace');
+        setShowManagement(false);
+        return true;
+      }
+
+      // Try to go back using navigation stack for other screens
       const didGoBack = handleGoBack();
       if (didGoBack) {
         return true;
@@ -150,6 +153,7 @@ export default function Page() {
       setShowBottomTabs(true);
       setActiveBottomTab('workspace');
       setShowManagement(false);
+      setNavigationData(null);
       return true;
     };
 
@@ -167,6 +171,7 @@ export default function Page() {
   const closeProductForm = useCallback(() => {
     setProductFormProduct(null);
     setIsProductFormOpen(false);
+    setProductFormHasChanges(false);
   }, []);
 
   const openCollectionForm = useCallback((collection?: any) => {
@@ -180,6 +185,19 @@ export default function Page() {
   }, []);
 
   const handleNavigate = useCallback((screen: Screen, data?: any) => {
+    // If navigating from product form, close it first
+    if (isProductFormOpen) {
+      setProductFormProduct(null);
+      setIsProductFormOpen(false);
+      setProductFormHasChanges(false);
+    }
+
+    // If navigating from collection form, close it first
+    if (isCollectionFormOpen) {
+      setCollectionFormCollection(null);
+      setIsCollectionFormOpen(false);
+    }
+
     // Save current state to navigation stack before navigating
     const currentState: NavigationState = {
       screen: currentScreen,
@@ -190,6 +208,7 @@ export default function Page() {
     };
 
     setCurrentScreen(screen);
+    setNavigationData(data); // Store the navigation data
 
     // For menu screen, ensure we reset all navigation states
     if (screen === 'menu') {
@@ -211,8 +230,6 @@ export default function Page() {
       setOptionSetData(data || {});
     }
 
-
-
     // Add current state to navigation stack (but avoid duplicates of the same screen)
     setNavigationStack(prev => {
       const lastState = prev[prev.length - 1];
@@ -221,7 +238,7 @@ export default function Page() {
       }
       return prev;
     });
-  }, [currentScreen, showBottomTabs, activeBottomTab, showManagement, optionSetData]);
+  }, [currentScreen, showBottomTabs, activeBottomTab, showManagement, optionSetData, isProductFormOpen, isCollectionFormOpen]);
 
   const handleBottomTabPress = useCallback((tab: BottomTab) => {
     setActiveBottomTab(tab);
@@ -245,6 +262,7 @@ export default function Page() {
             // Refresh will happen automatically due to real-time updates
           }}
           onNavigate={handleNavigate}
+          onHasChangesChange={setProductFormHasChanges}
         />
       );
     }
@@ -324,6 +342,7 @@ export default function Page() {
         return <ItemsScreen
           isGridView={isGridView}
           onClose={() => handleNavigate('menu')}
+          productId={navigationData?.productId} // Pass productId if provided in navigation data
         />;
       case 'locations':
         return <Locations

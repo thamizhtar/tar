@@ -80,9 +80,7 @@ src/
 │   ├── instant.ts        # InstantDB configuration
 │   ├── r2-service.ts     # Cloudflare R2 integration
 │   ├── store-context.tsx # Multi-store management
-│   ├── logger.ts         # Logging and error tracking
-│   ├── migrate-products.ts # Data migration utilities
-│   └── cleanup-legacy.ts # Legacy data cleanup
+│   └── logger.ts         # Logging and error tracking
 └── global.css           # Global styles
 ```
 
@@ -242,19 +240,6 @@ User Selects Media → Image Picker → File Processing → R2 Upload → URL Ge
 - **Search Integration**: Find products within collections
 
 ## Services & Utilities
-
-### Migration System
-
-**Data Migration Framework:**
-- **Schema Evolution**: Handles database schema changes
-- **Backward Compatibility**: Maintains support for legacy data
-- **Verification System**: Ensures migration integrity
-- **Rollback Capability**: Safe migration with recovery options
-
-**Migration Components:**
-- `migrate-products.ts`: Product schema migrations
-- `cleanup-legacy.ts`: Legacy data cleanup
-- `verify-migration.ts`: Migration status verification
 
 ### Logging & Error Tracking
 
